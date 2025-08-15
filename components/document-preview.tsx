@@ -86,7 +86,7 @@ export function DocumentPreview({
 
   const document: Document | null = previewDocument
     ? previewDocument
-    : artifact.status === 'streaming'
+    : artifact.status === 'streaming' && artifact.isVisible
       ? {
           title: artifact.title,
           kind: artifact.kind,
@@ -109,7 +109,7 @@ export function DocumentPreview({
       <DocumentHeader
         title={document.title}
         kind={document.kind}
-        isStreaming={artifact.status === 'streaming'}
+        isStreaming={artifact.status === 'streaming' && artifact.isVisible}
       />
       <DocumentContent document={document} />
     </div>
@@ -249,7 +249,7 @@ const DocumentContent = ({ document }: { document: Document }) => {
     content: document.content ?? '',
     isCurrentVersion: true,
     currentVersionIndex: 0,
-    status: artifact.status,
+    status: artifact.isVisible ? artifact.status : 'idle',
     saveContent: () => {},
     suggestions: [],
   };

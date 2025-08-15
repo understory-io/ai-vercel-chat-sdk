@@ -291,6 +291,7 @@ export async function saveDocument({
   userId: string;
 }) {
   try {
+    console.log('Saving document with userId:', userId);
     return await db
       .insert(document)
       .values({
@@ -303,6 +304,7 @@ export async function saveDocument({
       })
       .returning();
   } catch (error) {
+    console.error('Save document error:', error);
     throw new ChatSDKError('bad_request:database', 'Failed to save document');
   }
 }
