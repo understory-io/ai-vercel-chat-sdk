@@ -29,6 +29,8 @@ import { myProvider } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
 import { geolocation } from '@vercel/functions';
+import { createRequestContext, createCorrelatedLogger } from '@/lib/request-context';
+import { createPerformanceLogger } from '@/lib/logger';
 import {
   createResumableStreamContext,
   type ResumableStreamContext,
@@ -64,12 +66,30 @@ export function getStreamContext() {
 }
 
 export async function POST(request: Request) {
+  const requestContext = createRequestContext(request);
+  const perf = createPerformanceLogger('api', 'chat_post');
   let requestBody: PostRequestBody;
+
+  requestContext.logger.info({
+    event: 'chat_request_start',
+    method: 'POST',
+    url: request.url
+  }, 'Starting chat request');
 
   try {
     const json = await request.json();
     requestBody = postRequestBodySchema.parse(json);
-  } catch (_) {
+    
+    // Update context with chat information
+    requestContext.chatId = requestBody.id;
+    requestContext.logger = createCorrelatedLogger(requestContext, 'api', 'chat');
+    
+  } catch (error) {
+    perf.error(error as Error, { stage: 'request_parsing' });
+    requestContext.logger.error({
+      event: 'chat_request_parse_error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 'Failed to parse chat request');
     return new ChatSDKError('bad_request:api').toResponse();
   }
 
@@ -89,10 +109,25 @@ export async function POST(request: Request) {
     const session = await auth();
 
     if (!session?.user) {
+      perf.error(new Error('Unauthorized'), { stage: 'authentication' });
+      requestContext.logger.warn({
+        event: 'chat_request_unauthorized'
+      }, 'Chat request rejected - no valid session');
       return new ChatSDKError('unauthorized:chat').toResponse();
     }
 
+    // Update context with user information
+    requestContext.userId = session.user.id;
+    requestContext.logger = createCorrelatedLogger(requestContext, 'api', 'chat');
+
     const userType: UserType = session.user.type;
+
+    requestContext.logger.info({
+      event: 'chat_request_authenticated',
+      userId: session.user.id,
+      userType: userType,
+      chatId: id
+    }, `Chat request authenticated for user ${session.user.id}`);
 
     const messageCount = await getMessageCountByUserId({
       id: session.user.id,
@@ -100,6 +135,13 @@ export async function POST(request: Request) {
     });
 
     if (messageCount > entitlementsByUserType[userType].maxMessagesPerDay) {
+      perf.error(new Error('Rate limited'), { stage: 'rate_limiting', messageCount });
+      requestContext.logger.warn({
+        event: 'chat_request_rate_limited',
+        messageCount,
+        maxAllowed: entitlementsByUserType[userType].maxMessagesPerDay,
+        userType
+      }, `Chat request rate limited - ${messageCount} messages in 24h (max: ${entitlementsByUserType[userType].maxMessagesPerDay})`);
       return new ChatSDKError('rate_limit:chat').toResponse();
     }
 
@@ -152,22 +194,40 @@ export async function POST(request: Request) {
 
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
-        // Dynamically load MCP tools
+        // Dynamically load MCP tools with performance tracking
         let mcpTools: any[] = [];
         const mcpToolsObject: Record<string, any> = {};
         const mcpActiveTools: string[] = [];
         
+        const mcpLogger = createCorrelatedLogger(requestContext, 'mcp', 'tools_loading');
+        
         try {
-          mcpTools = await getMCPTools({ session, dataStream });
+          mcpLogger.info({
+            event: 'mcp_tools_loading_start'
+          }, 'Starting MCP tools loading');
+
+          mcpTools = await getMCPTools({ session, dataStream, requestContext });
+          
           // Convert MCP tools to the format expected by AI SDK using actual tool names
           mcpTools.forEach((toolObj) => {
             const toolName = toolObj.name; // Use actual MCP tool name
             mcpToolsObject[toolName] = toolObj.tool;
             mcpActiveTools.push(toolName);
           });
-          console.log(`Loaded ${mcpTools.length} MCP tools for chat:`, mcpActiveTools);
+          
+          mcpLogger.info({
+            event: 'mcp_tools_loaded',
+            toolCount: mcpTools.length,
+            toolNames: mcpActiveTools
+          }, `Loaded ${mcpTools.length} MCP tools for chat: ${mcpActiveTools.join(', ')}`);
         } catch (error) {
-          console.error('Failed to load MCP tools:', error);
+          mcpLogger.error({
+            event: 'mcp_tools_loading_error',
+            error: {
+              message: error instanceof Error ? error.message : 'Unknown error',
+              stack: error instanceof Error ? error.stack : undefined
+            }
+          }, `Failed to load MCP tools: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
 
         // Combine static tools with dynamic MCP tools
@@ -189,9 +249,18 @@ export async function POST(request: Request) {
           'updateDocument',
           'requestSuggestions',
         ];
-        const allActiveTools = selectedChatModel === 'chat-model-reasoning' 
+        const allActiveTools: string[] = selectedChatModel === 'chat-model-reasoning' 
           ? [] 
           : [...staticActiveTools, ...mcpActiveTools];
+
+        const streamLogger = createCorrelatedLogger(requestContext, 'ai-sdk', 'stream_text');
+        streamLogger.info({
+          event: 'stream_text_start',
+          model: selectedChatModel,
+          messageCount: uiMessages.length,
+          activeToolsCount: allActiveTools.length,
+          activeTools: allActiveTools
+        }, `Starting stream text generation with ${allActiveTools.length} tools`);
 
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
@@ -217,6 +286,19 @@ export async function POST(request: Request) {
       },
       generateId: generateUUID,
       onFinish: async ({ messages }) => {
+        const duration = perf.end({
+          messageCount: messages.length,
+          chatId: id,
+          userId: session.user.id
+        });
+
+        requestContext.logger.info({
+          event: 'chat_request_complete',
+          duration_ms: duration,
+          messageCount: messages.length,
+          totalMessages: messages.length
+        }, `Chat request completed in ${duration.toFixed(2)}ms with ${messages.length} messages`);
+
         await saveMessages({
           messages: messages.map((message) => ({
             id: message.id,
@@ -228,7 +310,23 @@ export async function POST(request: Request) {
           })),
         });
       },
-      onError: () => {
+      onError: (error) => {
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        const duration = perf.error(errorObj, {
+          chatId: id,
+          userId: session.user.id,
+          stage: 'streaming'
+        });
+
+        requestContext.logger.error({
+          event: 'chat_request_stream_error',
+          duration_ms: duration,
+          error: {
+            message: errorObj.message,
+            stack: errorObj.stack
+          }
+        }, `Chat stream failed after ${duration.toFixed(2)}ms: ${errorObj.message}`);
+        
         return 'Oops, an error occurred!';
       },
     });
@@ -245,9 +343,33 @@ export async function POST(request: Request) {
       return new Response(stream.pipeThrough(new JsonToSseTransformStream()));
     }
   } catch (error) {
+    const duration = perf.error(error as Error, {
+      chatId: requestContext.chatId,
+      userId: requestContext.userId,
+      stage: 'general'
+    });
+
+    requestContext.logger.error({
+      event: 'chat_request_error',
+      duration_ms: duration,
+      error: {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        type: error instanceof ChatSDKError ? 'ChatSDKError' : 'UnknownError'
+      }
+    }, `Chat request failed after ${duration.toFixed(2)}ms`);
+
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
+
+    // Log unexpected errors and return generic error
+    requestContext.logger.fatal({
+      event: 'chat_request_unexpected_error',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, 'Unexpected error in chat request');
+    
+    return new Response('Internal Server Error', { status: 500 });
   }
 }
 

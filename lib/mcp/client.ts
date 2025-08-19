@@ -1,5 +1,6 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { mcpLogger, createPerformanceLogger } from '@/lib/logger';
 
 interface MCPConfig {
   url: string;
@@ -11,8 +12,9 @@ class MCPClientManager {
   private connections: Map<string, Promise<void>> = new Map();
 
   async getClient(config: MCPConfig): Promise<Client> {
-    if (this.clients.has(config.name)) {
-      return this.clients.get(config.name)!;
+    const existingClient = this.clients.get(config.name);
+    if (existingClient) {
+      return existingClient;
     }
 
     // Avoid creating multiple concurrent connections to the same server
@@ -20,12 +22,29 @@ class MCPClientManager {
       this.connections.set(config.name, this.createConnection(config));
     }
 
-    await this.connections.get(config.name);
-    return this.clients.get(config.name)!;
+    const connection = this.connections.get(config.name);
+    if (connection) {
+      await connection;
+    }
+    
+    const client = this.clients.get(config.name);
+    if (!client) {
+      throw new Error(`Failed to create MCP client for ${config.name}`);
+    }
+    
+    return client;
   }
 
   private async createConnection(config: MCPConfig): Promise<void> {
+    const perf = createPerformanceLogger('mcp-client', 'connection');
+    
     try {
+      mcpLogger.info({
+        event: 'mcp_connection_start',
+        serverName: config.name,
+        serverUrl: config.url
+      }, `Starting connection to MCP server: ${config.name}`);
+
       const transport = new StreamableHTTPClientTransport(new URL(config.url));
       const client = new Client({
         name: 'product-documentation-tool',
@@ -38,9 +57,33 @@ class MCPClientManager {
 
       await client.connect(transport);
       this.clients.set(config.name, client);
-      console.log(`Connected to MCP server: ${config.name}`);
+      
+      const duration = perf.end({
+        serverName: config.name,
+        success: true
+      });
+
+      mcpLogger.info({
+        event: 'mcp_connection_success',
+        serverName: config.name,
+        duration_ms: duration
+      }, `Connected to MCP server: ${config.name} in ${duration.toFixed(2)}ms`);
     } catch (error) {
-      console.error(`Failed to connect to MCP server ${config.name}:`, error);
+      const duration = perf.error(error as Error, {
+        serverName: config.name,
+        serverUrl: config.url
+      });
+
+      mcpLogger.error({
+        event: 'mcp_connection_error',
+        serverName: config.name,
+        duration_ms: duration,
+        error: {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined
+        }
+      }, `Failed to connect to MCP server ${config.name} after ${duration.toFixed(2)}ms: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
       throw error;
     }
   }
@@ -48,10 +91,19 @@ class MCPClientManager {
   async disconnect(name: string): Promise<void> {
     const client = this.clients.get(name);
     if (client) {
+      mcpLogger.info({
+        event: 'mcp_disconnect',
+        serverName: name
+      }, `Disconnecting from MCP server: ${name}`);
+      
       await client.close();
       this.clients.delete(name);
       this.connections.delete(name);
-      console.log(`Disconnected from MCP server: ${name}`);
+      
+      mcpLogger.info({
+        event: 'mcp_disconnected',
+        serverName: name
+      }, `Disconnected from MCP server: ${name}`);
     }
   }
 
