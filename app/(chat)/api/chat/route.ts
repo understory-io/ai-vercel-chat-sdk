@@ -23,6 +23,7 @@ import { createDocument } from '@/lib/ai/tools/create-document';
 import { updateDocument } from '@/lib/ai/tools/update-document';
 import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
+import { getMCPTools } from '@/lib/ai/tools/mcp-dynamic-tools';
 import { isProductionEnvironment } from '@/lib/constants';
 import { myProvider } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
@@ -150,31 +151,56 @@ export async function POST(request: Request) {
     await createStreamId({ streamId, chatId: id });
 
     const stream = createUIMessageStream({
-      execute: ({ writer: dataStream }) => {
+      execute: async ({ writer: dataStream }) => {
+        // Dynamically load MCP tools
+        let mcpTools: any[] = [];
+        const mcpToolsObject: Record<string, any> = {};
+        const mcpActiveTools: string[] = [];
+        
+        try {
+          mcpTools = await getMCPTools({ session, dataStream });
+          // Convert MCP tools to the format expected by AI SDK using actual tool names
+          mcpTools.forEach((toolObj) => {
+            const toolName = toolObj.name; // Use actual MCP tool name
+            mcpToolsObject[toolName] = toolObj.tool;
+            mcpActiveTools.push(toolName);
+          });
+          console.log(`Loaded ${mcpTools.length} MCP tools for chat:`, mcpActiveTools);
+        } catch (error) {
+          console.error('Failed to load MCP tools:', error);
+        }
+
+        // Combine static tools with dynamic MCP tools
+        const allTools = {
+          getWeather,
+          createDocument: createDocument({ session, dataStream }),
+          updateDocument: updateDocument({ session, dataStream }),
+          requestSuggestions: requestSuggestions({
+            session,
+            dataStream,
+          }),
+          ...mcpToolsObject,
+        };
+
+        // Combine active tools lists
+        const staticActiveTools = [
+          'getWeather',
+          'createDocument', 
+          'updateDocument',
+          'requestSuggestions',
+        ];
+        const allActiveTools = selectedChatModel === 'chat-model-reasoning' 
+          ? [] 
+          : [...staticActiveTools, ...mcpActiveTools];
+
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
           system: systemPrompt({ selectedChatModel, requestHints }),
           messages: convertToModelMessages(uiMessages),
           stopWhen: stepCountIs(5),
-          experimental_activeTools:
-            selectedChatModel === 'chat-model-reasoning'
-              ? []
-              : [
-                  'getWeather',
-                  'createDocument',
-                  'updateDocument',
-                  'requestSuggestions',
-                ],
+          experimental_activeTools: allActiveTools,
           experimental_transform: smoothStream({ chunking: 'word' }),
-          tools: {
-            getWeather,
-            createDocument: createDocument({ session, dataStream }),
-            updateDocument: updateDocument({ session, dataStream }),
-            requestSuggestions: requestSuggestions({
-              session,
-              dataStream,
-            }),
-          },
+          tools: allTools,
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
             functionId: 'stream-text',
