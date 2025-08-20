@@ -44,7 +44,7 @@ function PureMessages({
   return (
     <div
       ref={messagesContainerRef}
-      className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4 relative overscroll-contain"
+      className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4 relative overscroll-contain custom-scrollbar"
     >
       {messages.length === 0 && <Greeting />}
 

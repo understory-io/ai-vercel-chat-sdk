@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useArtifact } from '@/hooks/use-artifact';
-import { Save, Loader2, Eye, Edit3, X, } from 'lucide-react';
+import { Save, Loader2, Eye, Edit3, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ArtifactActions } from './artifact-actions';
 import { formatDistance } from 'date-fns';
@@ -12,7 +12,7 @@ import useSWR from 'swr';
 import { fetcher } from '@/lib/utils';
 import type { Document } from '@/lib/db/schema';
 
-const ARTIFACT_SIDEBAR_WIDTH = 400;
+const ARTIFACT_SIDEBAR_WIDTH = '50%';
 
 export function ArtifactSidebar() {
   const { artifact, setArtifact } = useArtifact();
@@ -31,11 +31,13 @@ export function ArtifactSidebar() {
     fetcher,
   );
 
-  // Auto-resize textarea
+  // Auto-resize textarea with max height constraint
   useEffect(() => {
     if (textareaRef.current && !isPreviewMode) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+      const maxHeight = window.innerHeight - 300; // Reserve space for header and footer
+      const newHeight = Math.min(textareaRef.current.scrollHeight, maxHeight);
+      textareaRef.current.style.height = `${newHeight}px`;
     }
   }, [artifact?.content, isPreviewMode]);
 
@@ -168,7 +170,7 @@ export function ArtifactSidebar() {
 
       {/* Content Area */}
       <div className="flex-1 overflow-hidden">
-        <div className="h-full p-4 overflow-y-auto overscroll-contain">
+        <div className="h-full p-4 overflow-y-auto overscroll-contain custom-scrollbar">
           {isPreviewMode ? (
             // Preview Mode - Rendered Markdown
             <div className="prose prose-gray max-w-none prose-sm">
@@ -232,13 +234,14 @@ export function ArtifactSidebar() {
               value={artifact.content}
               onChange={(e) => handleContentChange(e.target.value)}
               disabled={isStreaming}
-              className={`w-full min-h-[400px] border-none resize-none text-sm leading-relaxed bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 ${
+              className={`w-full min-h-[400px] border-none resize-none text-sm leading-relaxed bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 custom-scrollbar ${
                 isStreaming ? 'opacity-50 cursor-not-allowed' : ''
               }`}
               placeholder="Start writing..."
               style={{
                 height: 'auto',
-                minHeight: 'calc(100vh - 200px)',
+                minHeight: '400px',
+                maxHeight: 'calc(100vh - 300px)',
               }}
             />
           )}

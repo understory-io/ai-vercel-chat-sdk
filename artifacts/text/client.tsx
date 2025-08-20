@@ -63,6 +63,7 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
     getDocumentContentById,
     isLoading,
     metadata,
+    isInline,
   }) => {
     if (isLoading) {
       return <DocumentSkeleton artifactKind="text" />;
@@ -77,7 +78,7 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
 
     return (
       <>
-        <div className="flex flex-row py-8 md:p-20 px-4 h-full overflow-y-auto">
+        <div className={`flex flex-row py-8 px-4 ${isInline ? 'md:p-4' : 'md:p-20 h-full overflow-y-auto custom-scrollbar'}`}>
           <Editor
             content={content}
             suggestions={metadata ? metadata.suggestions : []}
@@ -85,6 +86,7 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
             currentVersionIndex={currentVersionIndex}
             status={status}
             onSaveContent={onSaveContent}
+            isInline={isInline}
           />
 
           {metadata?.suggestions && metadata.suggestions.length > 0 ? (

@@ -30,6 +30,7 @@ type EditorProps = {
   isCurrentVersion: boolean;
   currentVersionIndex: number;
   suggestions: Array<Suggestion>;
+  isInline?: boolean;
 };
 
 function PureEditor({
@@ -37,6 +38,7 @@ function PureEditor({
   onSaveContent,
   suggestions,
   status,
+  isInline = false,
 }: EditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorView | null>(null);
@@ -146,7 +148,10 @@ function PureEditor({
   }, [suggestions, content]);
 
   return (
-    <div className="relative prose dark:prose-invert h-full overflow-y-auto" ref={containerRef} />
+    <div 
+      className={`relative prose dark:prose-invert ${!isInline ? 'h-full overflow-y-auto custom-scrollbar' : ''}`} 
+      ref={containerRef} 
+    />
   );
 }
 
@@ -157,7 +162,8 @@ function areEqual(prevProps: EditorProps, nextProps: EditorProps) {
     prevProps.isCurrentVersion === nextProps.isCurrentVersion &&
     !(prevProps.status === 'streaming' && nextProps.status === 'streaming') &&
     prevProps.content === nextProps.content &&
-    prevProps.onSaveContent === nextProps.onSaveContent
+    prevProps.onSaveContent === nextProps.onSaveContent &&
+    prevProps.isInline === nextProps.isInline
   );
 }
 

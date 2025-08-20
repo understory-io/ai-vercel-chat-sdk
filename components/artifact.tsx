@@ -361,7 +361,7 @@ function PureArtifact({
           )}
 
           <motion.div
-            className="fixed dark:bg-muted bg-background h-screen flex flex-col overflow-hidden md:border-l dark:border-zinc-700 border-zinc-200"
+            className="fixed dark:bg-muted bg-background h-screen flex flex-col md:border-l dark:border-zinc-700 border-zinc-200"
             initial={
               isMobile
                 ? {
@@ -465,7 +465,7 @@ function PureArtifact({
               />
             </div>
 
-            <div className="dark:bg-muted bg-background overflow-y-auto !max-w-full flex-1 min-h-0">
+            <div className="dark:bg-muted bg-background overflow-y-auto !max-w-full flex-1 min-h-0 custom-scrollbar" style={{height: '100%'}}>
               <artifactDefinition.content
                 title={artifact.title}
                 content={
