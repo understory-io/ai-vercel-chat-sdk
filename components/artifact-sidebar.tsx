@@ -1,16 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useArtifact } from '@/hooks/use-artifact';
-import { Save, Loader2, Eye, Edit3, X } from 'lucide-react';
+import { Save, Loader2, Eye, Edit3, X, Copy } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { ArtifactActions } from './artifact-actions';
-import { formatDistance } from 'date-fns';
-import useSWR from 'swr';
-import { fetcher } from '@/lib/utils';
-import type { Document } from '@/lib/db/schema';
+import { toast } from 'sonner';
 
 const ARTIFACT_SIDEBAR_WIDTH = '50%';
 
@@ -19,27 +15,7 @@ export function ArtifactSidebar() {
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Fetch document versions if artifact exists
-  const { data: documents, isLoading: isDocumentsFetching } = useSWR<
-    Array<Document>
-  >(
-    artifact &&
-      artifact.documentId !== 'init' &&
-      artifact.status !== 'streaming'
-      ? `/api/document?id=${artifact.documentId}`
-      : null,
-    fetcher,
-  );
 
-  // Auto-resize textarea with max height constraint
-  useEffect(() => {
-    if (textareaRef.current && !isPreviewMode) {
-      textareaRef.current.style.height = 'auto';
-      const maxHeight = window.innerHeight - 300; // Reserve space for header and footer
-      const newHeight = Math.min(textareaRef.current.scrollHeight, maxHeight);
-      textareaRef.current.style.height = `${newHeight}px`;
-    }
-  }, [artifact?.content, isPreviewMode]);
 
   const handleContentChange = (newContent: string) => {
     if (artifact?.status === 'streaming') return; // Prevent editing while AI is streaming
@@ -66,11 +42,6 @@ export function ArtifactSidebar() {
     }));
   };
 
-  const formatStats = (content: string) => {
-    const words = content.split(/\s+/).filter((word) => word.length > 0).length;
-    const chars = content.length;
-    return { words, chars };
-  };
 
   if (!artifact?.isVisible) {
     return null;
@@ -100,13 +71,11 @@ export function ArtifactSidebar() {
     );
   }
 
-  const { words, chars } = formatStats(artifact.content);
   const isStreaming = artifact.status === 'streaming';
-  const mostRecentDocument = documents?.at(-1);
 
   return (
     <div
-      className="h-full bg-background border-l border-border flex flex-col transition-all duration-300 ease-in-out overscroll-contain"
+      className="h-full bg-background border-l border-border flex flex-col transition-all duration-200 ease-out overscroll-contain animate-in slide-in-from-right-full"
       style={{ width: ARTIFACT_SIDEBAR_WIDTH }}
     >
       {/* Header */}
@@ -147,6 +116,21 @@ export function ArtifactSidebar() {
               <Save className="w-4 h-4 text-green-500" />
             )}
           </div>
+
+          {/* Copy Button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              navigator.clipboard.writeText(artifact.content);
+              toast.success('Copied to clipboard!');
+            }}
+            disabled={isStreaming}
+            className="h-8 w-8 p-0"
+            title="Copy to clipboard"
+          >
+            <Copy className="w-4 h-4" />
+          </Button>
 
           {/* Close Button */}
           <Button
@@ -239,50 +223,16 @@ export function ArtifactSidebar() {
               }`}
               placeholder="Start writing..."
               style={{
-                height: 'auto',
+                height: '100%',
                 minHeight: '400px',
-                maxHeight: 'calc(100vh - 300px)',
+                maxHeight: 'calc(100vh)',
               }}
             />
           )}
         </div>
       </div>
 
-      {/* Actions Bar */}
-      {documents && documents.length > 0 && (
-        <div className="px-4 py-2 border-t border-border">
-          <ArtifactActions
-            artifact={artifact}
-            handleVersionChange={() => {}} // TODO: Implement version handling
-            currentVersionIndex={documents.length - 1}
-            isCurrentVersion={true}
-            mode="edit"
-            metadata={{}}
-            setMetadata={() => {}}
-          />
-        </div>
-      )}
 
-      {/* Footer Stats */}
-      <div className="px-4 py-2 border-t border-border bg-muted/10">
-        <div className="flex justify-between items-center text-xs text-muted-foreground">
-          <span>Words: {words}</span>
-          <span>Characters: {chars}</span>
-          {mostRecentDocument && (
-            <span>
-              Updated{' '}
-              {formatDistance(
-                new Date(mostRecentDocument.createdAt),
-                new Date(),
-                {
-                  addSuffix: true,
-                },
-              )}
-            </span>
-          )}
-          <span>{isStreaming ? 'AI generating...' : 'Ready'}</span>
-        </div>
-      </div>
     </div>
   );
 }
