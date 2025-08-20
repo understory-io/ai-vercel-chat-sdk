@@ -17,7 +17,6 @@ interface MessagesProps {
   setMessages: UseChatHelpers<ChatMessage>['setMessages'];
   regenerate: UseChatHelpers<ChatMessage>['regenerate'];
   isReadonly: boolean;
-  isArtifactVisible: boolean;
 }
 
 function PureMessages({
@@ -45,7 +44,7 @@ function PureMessages({
   return (
     <div
       ref={messagesContainerRef}
-      className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4 relative"
+      className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4 relative overscroll-contain"
     >
       {messages.length === 0 && <Greeting />}
 
@@ -84,8 +83,6 @@ function PureMessages({
 }
 
 export const Messages = memo(PureMessages, (prevProps, nextProps) => {
-  if (prevProps.isArtifactVisible && nextProps.isArtifactVisible) return true;
-
   if (prevProps.status !== nextProps.status) return false;
   if (prevProps.messages.length !== nextProps.messages.length) return false;
   if (!equal(prevProps.messages, nextProps.messages)) return false;

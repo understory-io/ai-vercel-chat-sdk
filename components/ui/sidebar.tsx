@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
-import { VariantProps, cva } from 'class-variance-authority';
+import { type VariantProps, cva } from 'class-variance-authority';
 import { PanelLeft } from 'lucide-react';
 
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -34,6 +34,8 @@ type SidebarContext = {
   setOpenMobile: (open: boolean) => void;
   isMobile: boolean;
   toggleSidebar: () => void;
+  isArtifactVisible: boolean;
+  setIsArtifactVisible: (visible: boolean) => void;
 };
 
 const SidebarContext = React.createContext<SidebarContext | null>(null);
@@ -69,32 +71,106 @@ const SidebarProvider = React.forwardRef<
   ) => {
     const isMobile = useIsMobile();
     const [openMobile, setOpenMobile] = React.useState(false);
+    const [isArtifactVisible, setIsArtifactVisible] = React.useState(false);
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
     const [_open, _setOpen] = React.useState(defaultOpen);
-    const open = openProp ?? _open;
+    const [openBeforeArtifact, setOpenBeforeArtifact] =
+      React.useState(defaultOpen);
+
+    // Determine actual open state based on artifact visibility
+    const actualOpen =
+      isArtifactVisible && !isMobile ? false : (openProp ?? _open);
+    const open = actualOpen;
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
-        const openState = typeof value === 'function' ? value(open) : value;
+        const targetOpen = openProp ?? _open;
+        const openState =
+          typeof value === 'function' ? value(targetOpen) : value;
+
         if (setOpenProp) {
           setOpenProp(openState);
         } else {
           _setOpen(openState);
         }
 
+        // If artifact is not visible, this is the normal open state
+        if (!isArtifactVisible) {
+          setOpenBeforeArtifact(openState);
+        }
+
         // This sets the cookie to keep the sidebar state.
         document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
       },
-      [setOpenProp, open],
+      [setOpenProp, openProp, _open, isArtifactVisible],
     );
+
+    // Effect to handle artifact visibility changes
+    React.useEffect(() => {
+      if (isArtifactVisible && !isMobile) {
+        // Store current state before collapsing
+        setOpenBeforeArtifact(openProp ?? _open);
+      }
+    }, [isArtifactVisible, isMobile, openProp, _open]);
+
+    // Effect to sync with global artifact state
+    React.useEffect(() => {
+      // We'll sync artifact state via a separate mechanism to avoid circular deps
+      if (typeof window !== 'undefined') {
+        const checkArtifactState = () => {
+          try {
+            // Try to get artifact state from SWR cache
+            const cache = (window as any).__SWR_CACHE__;
+            if (cache?.get) {
+              const artifactData = cache.get('artifact');
+              if (artifactData && typeof artifactData.isVisible === 'boolean') {
+                setIsArtifactVisible(artifactData.isVisible);
+              }
+            }
+          } catch (e) {
+            // Ignore errors, fallback to manual state management
+          }
+        };
+
+        // Check initially
+        checkArtifactState();
+
+        // Set up interval to check for changes
+        const interval = setInterval(checkArtifactState, 100);
+        return () => clearInterval(interval);
+      }
+    }, [setIsArtifactVisible]);
 
     // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
-      return isMobile
-        ? setOpenMobile((open) => !open)
-        : setOpen((open) => !open);
-    }, [isMobile, setOpen, setOpenMobile]);
+      if (isMobile) {
+        return setOpenMobile((open) => !open);
+      }
+
+      // If artifact is visible, we're toggling the user preference
+      if (isArtifactVisible) {
+        const newState = !openBeforeArtifact;
+        setOpenBeforeArtifact(newState);
+        // Don't actually open sidebar when artifact is visible
+        if (setOpenProp) {
+          setOpenProp(newState);
+        } else {
+          _setOpen(newState);
+        }
+        document.cookie = `${SIDEBAR_COOKIE_NAME}=${newState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
+      } else {
+        setOpen((open) => !open);
+      }
+    }, [
+      isMobile,
+      setOpen,
+      setOpenMobile,
+      isArtifactVisible,
+      openBeforeArtifact,
+      setOpenProp,
+      _setOpen,
+    ]);
 
     // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
@@ -125,6 +201,8 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
+        isArtifactVisible,
+        setIsArtifactVisible,
       }),
       [
         state,
@@ -134,6 +212,8 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
+        isArtifactVisible,
+        setIsArtifactVisible,
       ],
     );
 
@@ -145,6 +225,9 @@ const SidebarProvider = React.forwardRef<
               {
                 '--sidebar-width': SIDEBAR_WIDTH,
                 '--sidebar-width-icon': SIDEBAR_WIDTH_ICON,
+                // Set artifact sidebar width based on visibility
+                '--artifact-sidebar-width':
+                  isArtifactVisible && !isMobile ? '400px' : '0px',
                 ...style,
               } as React.CSSProperties
             }
@@ -330,7 +413,8 @@ const SidebarInset = React.forwardRef<
     <main
       ref={ref}
       className={cn(
-        'relative flex min-h-svh flex-1 flex-col bg-background',
+        'relative flex min-h-svh flex-1 bg-background transition-all duration-300 ease-in-out',
+        'flex-col', // Always use flex-col layout - artifact sidebar is positioned separately
         'peer-data-[variant=inset]:min-h-[calc(100svh-theme(spacing.4))] md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow',
         className,
       )}

@@ -252,6 +252,24 @@ function PureArtifact({
     }
   }, [artifact.documentId, artifactDefinition, setMetadata]);
 
+  // Prevent page scrolling when artifact is visible
+  useEffect(() => {
+    if (typeof globalThis !== 'undefined' && globalThis.document?.body) {
+      if (artifact.isVisible) {
+        globalThis.document.body.style.overflow = 'hidden';
+      } else {
+        globalThis.document.body.style.overflow = '';
+      }
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (typeof globalThis !== 'undefined' && globalThis.document?.body) {
+        globalThis.document.body.style.overflow = '';
+      }
+    };
+  }, [artifact.isVisible]);
+
   return (
     <AnimatePresence>
       {artifact.isVisible && (
@@ -343,7 +361,7 @@ function PureArtifact({
           )}
 
           <motion.div
-            className="fixed dark:bg-muted bg-background h-dvh flex flex-col overflow-y-scroll md:border-l dark:border-zinc-700 border-zinc-200"
+            className="fixed dark:bg-muted bg-background h-screen flex flex-col overflow-hidden md:border-l dark:border-zinc-700 border-zinc-200"
             initial={
               isMobile
                 ? {
@@ -447,7 +465,7 @@ function PureArtifact({
               />
             </div>
 
-            <div className="dark:bg-muted bg-background h-full overflow-y-scroll !max-w-full items-center">
+            <div className="dark:bg-muted bg-background overflow-y-auto !max-w-full flex-1 min-h-0">
               <artifactDefinition.content
                 title={artifact.title}
                 content={

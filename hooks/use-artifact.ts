@@ -1,7 +1,7 @@
 'use client';
 
 import useSWR from 'swr';
-import { UIArtifact } from '@/components/artifact';
+import type { UIArtifact } from '@/components/artifact';
 import { useCallback, useMemo } from 'react';
 
 export const initialArtifactData: UIArtifact = {
@@ -63,6 +63,30 @@ export function useArtifact() {
     [setLocalArtifact],
   );
 
+  // Helper to toggle artifact visibility
+  const toggleArtifact = useCallback(() => {
+    setArtifact((current) => ({
+      ...current,
+      isVisible: !current.isVisible,
+    }));
+  }, [setArtifact]);
+
+  // Helper to show artifact
+  const showArtifact = useCallback(() => {
+    setArtifact((current) => ({
+      ...current,
+      isVisible: true,
+    }));
+  }, [setArtifact]);
+
+  // Helper to hide artifact
+  const hideArtifact = useCallback(() => {
+    setArtifact((current) => ({
+      ...current,
+      isVisible: false,
+    }));
+  }, [setArtifact]);
+
   const { data: localArtifactMetadata, mutate: setLocalArtifactMetadata } =
     useSWR<any>(
       () =>
@@ -77,9 +101,20 @@ export function useArtifact() {
     () => ({
       artifact,
       setArtifact,
+      toggleArtifact,
+      showArtifact,
+      hideArtifact,
       metadata: localArtifactMetadata,
       setMetadata: setLocalArtifactMetadata,
     }),
-    [artifact, setArtifact, localArtifactMetadata, setLocalArtifactMetadata],
+    [
+      artifact,
+      setArtifact,
+      toggleArtifact,
+      showArtifact,
+      hideArtifact,
+      localArtifactMetadata,
+      setLocalArtifactMetadata,
+    ],
   );
 }

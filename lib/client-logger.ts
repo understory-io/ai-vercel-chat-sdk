@@ -12,14 +12,16 @@ const LOG_LEVELS: LogLevel = {
   DEBUG: 0,
   INFO: 1,
   WARN: 2,
-  ERROR: 3
+  ERROR: 3,
 };
 
-const LOG_LEVEL = typeof window !== 'undefined' 
-  ? (localStorage.getItem('logLevel') || 'INFO')
-  : 'INFO';
+const LOG_LEVEL =
+  typeof window !== 'undefined'
+    ? localStorage.getItem('logLevel') || 'INFO'
+    : 'INFO';
 
-const currentLogLevel = LOG_LEVELS[LOG_LEVEL as keyof LogLevel] ?? LOG_LEVELS.INFO;
+const currentLogLevel =
+  LOG_LEVELS[LOG_LEVEL as keyof LogLevel] ?? LOG_LEVELS.INFO;
 
 class ClientLogger {
   private component?: string;
@@ -30,12 +32,16 @@ class ClientLogger {
     this.context = context;
   }
 
-  private formatMessage(level: string, message: string, data?: any): [string, any?] {
+  private formatMessage(
+    level: string,
+    message: string,
+    data?: any,
+  ): [string, any?] {
     const timestamp = new Date().toISOString();
     const prefix = this.component ? `[${this.component}]` : '';
     const contextStr = this.context ? ` ${JSON.stringify(this.context)}` : '';
     const msg = `${timestamp} ${level}${prefix}${contextStr}: ${message}`;
-    
+
     return data ? [msg, data] : [msg];
   }
 
@@ -84,7 +90,10 @@ class ClientLogger {
 export const clientLogger = new ClientLogger();
 
 // Child loggers for different components with context
-export const createClientLogger = (component: string, context: Record<string, any> = {}) => {
+export const createClientLogger = (
+  component: string,
+  context: Record<string, any> = {},
+) => {
   return new ClientLogger(component, context);
 };
 
@@ -95,38 +104,47 @@ export const chatLogger = createClientLogger('chat');
 export const artifactLogger = createClientLogger('artifact');
 
 // Client-side performance tracking
-export const createClientPerformanceLogger = (component: string, operation: string) => {
+export const createClientPerformanceLogger = (
+  component: string,
+  operation: string,
+) => {
   const perfLogger = createClientLogger(component);
   const startTime = performance.now();
-  
+
   return {
     log: perfLogger,
     end: (additionalData: Record<string, any> = {}) => {
       const duration = performance.now() - startTime;
-      perfLogger.info({
-        operation,
-        duration_ms: duration,
-        ...additionalData
-      }, `${operation} completed in ${duration.toFixed(2)}ms`);
+      perfLogger.info(
+        {
+          operation,
+          duration_ms: duration,
+          ...additionalData,
+        },
+        `${operation} completed in ${duration.toFixed(2)}ms`,
+      );
       return duration;
     },
     error: (error: Error, additionalData: Record<string, any> = {}) => {
       const duration = performance.now() - startTime;
-      perfLogger.error({
-        operation,
-        duration_ms: duration,
-        error: {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
+      perfLogger.error(
+        {
+          operation,
+          duration_ms: duration,
+          error: {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+          },
+          ...additionalData,
         },
-        ...additionalData
-      }, `${operation} failed after ${duration.toFixed(2)}ms: ${error.message}`);
+        `${operation} failed after ${duration.toFixed(2)}ms: ${error.message}`,
+      );
       return duration;
-    }
+    },
   };
 };
 
 // Export types for TypeScript
-export type ClientLogger = ClientLogger;
+export type ClientLoggerType = ClientLogger;
 export type ChildClientLogger = ReturnType<typeof createClientLogger>;

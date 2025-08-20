@@ -4,7 +4,7 @@ import { isDevelopmentEnvironment, isProductionEnvironment } from './constants';
 // Server-side Pino logger - ONLY use in API routes and server components
 const loggerConfig = {
   level: process.env.LOG_LEVEL || (isDevelopmentEnvironment ? 'debug' : 'info'),
-  
+
   // Redact sensitive fields from logs
   redact: {
     paths: [
@@ -17,9 +17,9 @@ const loggerConfig = {
       'session.refreshToken',
       'args.password',
       'args.token',
-      'args.apiKey'
+      'args.apiKey',
     ],
-    censor: '***REDACTED***'
+    censor: '***REDACTED***',
   },
 
   // For development: use pino-pretty only in Node.js environment
@@ -33,38 +33,40 @@ const loggerConfig = {
             translateTime: 'HH:MM:ss.l',
             ignore: 'pid,hostname',
             messageFormat: '{msg}',
-            singleLine: false
-          }
-        }
+            singleLine: false,
+          },
+        },
       }
     : {
         // Production: structured JSON logging
         formatters: {
           level: (label: string) => ({ level: label }),
-          log: (object: any) => object
+          log: (object: any) => object,
         },
         timestamp: pino.stdTimeFunctions.isoTime,
-        messageKey: 'msg'
-      }
-  ),
+        messageKey: 'msg',
+      }),
 
   // Include basic system info
-  base: isProductionEnvironment 
-    ? { 
+  base: isProductionEnvironment
+    ? {
         service: 'proddoc-chatbot',
-        version: process.env.npm_package_version || '1.0.0'
+        version: process.env.npm_package_version || '1.0.0',
       }
-    : { service: 'proddoc-chatbot' }
+    : { service: 'proddoc-chatbot' },
 };
 
 // Create the root logger
 export const logger = pino(loggerConfig);
 
 // Child loggers for different components with context
-export const createLogger = (component: string, context: Record<string, any> = {}) => {
-  return logger.child({ 
-    component, 
-    ...context 
+export const createLogger = (
+  component: string,
+  context: Record<string, any> = {},
+) => {
+  return logger.child({
+    component,
+    ...context,
   });
 };
 
@@ -81,41 +83,50 @@ export const generateRequestId = () => {
 };
 
 // Performance tracking utilities
-export const createPerformanceLogger = (component: string, operation: string) => {
+export const createPerformanceLogger = (
+  component: string,
+  operation: string,
+) => {
   const perfLogger = createLogger(component);
   const startTime = process.hrtime.bigint();
-  
+
   return {
     log: perfLogger,
     end: (additionalData: Record<string, any> = {}) => {
       const endTime = process.hrtime.bigint();
       const duration = Number(endTime - startTime) / 1_000_000; // Convert to milliseconds
-      
-      perfLogger.info({
-        operation,
-        duration_ms: duration,
-        ...additionalData
-      }, `${operation} completed in ${duration.toFixed(2)}ms`);
-      
+
+      perfLogger.info(
+        {
+          operation,
+          duration_ms: duration,
+          ...additionalData,
+        },
+        `${operation} completed in ${duration.toFixed(2)}ms`,
+      );
+
       return duration;
     },
     error: (error: Error, additionalData: Record<string, any> = {}) => {
       const endTime = process.hrtime.bigint();
       const duration = Number(endTime - startTime) / 1_000_000;
-      
-      perfLogger.error({
-        operation,
-        duration_ms: duration,
-        error: {
-          message: error.message,
-          stack: error.stack,
-          name: error.name
+
+      perfLogger.error(
+        {
+          operation,
+          duration_ms: duration,
+          error: {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+          },
+          ...additionalData,
         },
-        ...additionalData
-      }, `${operation} failed after ${duration.toFixed(2)}ms: ${error.message}`);
-      
+        `${operation} failed after ${duration.toFixed(2)}ms: ${error.message}`,
+      );
+
       return duration;
-    }
+    },
   };
 };
 

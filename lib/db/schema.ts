@@ -33,7 +33,6 @@ export const chat = pgTable('Chat', {
 
 export type Chat = InferSelectModel<typeof chat>;
 
-
 export const message = pgTable('Message_v2', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   chatId: uuid('chatId')
@@ -46,7 +45,6 @@ export const message = pgTable('Message_v2', {
 });
 
 export type DBMessage = InferSelectModel<typeof message>;
-
 
 export const vote = pgTable(
   'Vote_v2',
