@@ -147,8 +147,9 @@ export async function POST(request: Request) {
         userId: session.user.id,
         userType: userType,
         chatId: id,
+        model: selectedChatModel,
       },
-      `Chat request authenticated for user ${session.user.id}`,
+      `Chat request authenticated for user ${session.user.id} using model ${selectedChatModel}`,
     );
 
     const messageCount = await getMessageCountByUserId({
@@ -219,6 +220,27 @@ export async function POST(request: Request) {
 
     const streamId = generateUUID();
     await createStreamId({ streamId, chatId: id });
+
+    // Configure different settings for different model types
+    const isGPTModel = selectedChatModel.includes('chat-model') && !selectedChatModel.includes('claude');
+    const isClaude = selectedChatModel.includes('claude');
+    const provider = isClaude ? 'anthropic' : isGPTModel ? 'openai' : 'unknown';
+    
+    // Get the specific model name for logging
+    let modelName = 'unknown';
+    switch (selectedChatModel) {
+      case 'claude-sonnet-model':
+        modelName = 'Claude Sonnet 4';
+        break;
+      case 'claude-chat-model':
+        modelName = 'Claude Opus 4.1';
+        break;
+      case 'chat-model':
+        modelName = 'GPT-5';
+        break;
+      default:
+        modelName = selectedChatModel;
+    }
 
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
@@ -291,10 +313,10 @@ export async function POST(request: Request) {
           'updateDocument',
           'requestSuggestions',
         ];
-        const allActiveTools: string[] =
-          selectedChatModel === 'chat-model-reasoning'
-            ? []
-            : [...staticActiveTools, ...mcpActiveTools];
+        const allActiveTools: string[] = [
+          ...staticActiveTools,
+          ...mcpActiveTools,
+        ];
 
         const streamLogger = createCorrelatedLogger(
           requestContext,
@@ -305,26 +327,43 @@ export async function POST(request: Request) {
           {
             event: 'stream_text_start',
             model: selectedChatModel,
+            modelName: modelName,
+            provider: provider,
             messageCount: uiMessages.length,
             activeToolsCount: allActiveTools.length,
             activeTools: allActiveTools,
           },
-          `Starting stream text generation with ${allActiveTools.length} tools`,
+          `Starting stream text generation with ${modelName} (${provider}) and ${allActiveTools.length} tools`,
         );
 
-        const result = streamText({
+        const streamConfig: any = {
           model: myProvider.languageModel(selectedChatModel),
           system: systemPrompt({ selectedChatModel, requestHints }),
           messages: convertToModelMessages(uiMessages),
           stopWhen: stepCountIs(5),
-          experimental_activeTools: allActiveTools,
+          experimental_activeTools: allActiveTools as any,
           experimental_transform: smoothStream({ chunking: 'word' }),
           tools: allTools,
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
             functionId: 'stream-text',
           },
-        });
+        };
+
+        // Add GPT-5 specific reasoning configuration only for GPT models
+        if (isGPTModel) {
+          streamConfig.experimental_providerOptions = {
+            openai: {
+              reasoningEffort: 'minimal',
+              textVerbosity: 'medium',
+              reasoningSummary: 'auto',
+              include: ['reasoning.encrypted_content'],
+              max_completion_tokens: 4096,
+            },
+          };
+        }
+
+        const result = streamText(streamConfig);
 
         result.consumeStream();
 
@@ -348,8 +387,11 @@ export async function POST(request: Request) {
             duration_ms: duration,
             messageCount: messages.length,
             totalMessages: messages.length,
+            model: selectedChatModel,
+            modelName: modelName,
+            provider: provider,
           },
-          `Chat request completed in ${duration.toFixed(2)}ms with ${messages.length} messages`,
+          `Chat request completed in ${duration.toFixed(2)}ms with ${messages.length} messages using ${modelName} (${provider})`,
         );
 
         await saveMessages({
@@ -376,12 +418,15 @@ export async function POST(request: Request) {
           {
             event: 'chat_request_stream_error',
             duration_ms: duration,
+            model: selectedChatModel,
+            modelName: modelName,
+            provider: provider,
             error: {
               message: errorObj.message,
               stack: errorObj.stack,
             },
           },
-          `Chat stream failed after ${duration.toFixed(2)}ms: ${errorObj.message}`,
+          `Chat stream failed after ${duration.toFixed(2)}ms using ${modelName} (${provider}): ${errorObj.message}`,
         );
 
         return 'Oops, an error occurred!';
