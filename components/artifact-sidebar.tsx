@@ -59,13 +59,13 @@ export function ArtifactSidebar() {
             variant="ghost"
             size="sm"
             onClick={handleClose}
-            className="h-8 w-8 p-0"
+            className="size-8 p-0"
           >
-            <X className="w-4 h-4" />
+            <X className="size-4" />
           </Button>
         </div>
         <div className="flex-1 flex items-center justify-center">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       </div>
     );
@@ -98,22 +98,22 @@ export function ArtifactSidebar() {
             size="sm"
             onClick={() => setIsPreviewMode(!isPreviewMode)}
             disabled={isStreaming}
-            className="h-8 w-8 p-0"
+            className="size-8 p-0"
             title={isPreviewMode ? 'Edit' : 'Preview'}
           >
             {isPreviewMode ? (
-              <Edit3 className="w-4 h-4" />
+              <Edit3 className="size-4" />
             ) : (
-              <Eye className="w-4 h-4" />
+              <Eye className="size-4" />
             )}
           </Button>
 
           {/* Save Status */}
           <div className="flex items-center gap-1">
             {isStreaming ? (
-              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+              <Loader2 className="size-4 animate-spin text-blue-500" />
             ) : (
-              <Save className="w-4 h-4 text-green-500" />
+              <Save className="size-4 text-green-500" />
             )}
           </div>
 
@@ -126,10 +126,10 @@ export function ArtifactSidebar() {
               toast.success('Copied to clipboard!');
             }}
             disabled={isStreaming}
-            className="h-8 w-8 p-0"
+            className="size-8 p-0"
             title="Copy to clipboard"
           >
-            <Copy className="w-4 h-4" />
+            <Copy className="size-4" />
           </Button>
 
           {/* Close Button */}
@@ -137,9 +137,9 @@ export function ArtifactSidebar() {
             variant="ghost"
             size="sm"
             onClick={handleClose}
-            className="h-8 w-8 p-0"
+            className="size-8 p-0"
           >
-            <X className="w-4 h-4" />
+            <X className="size-4" />
           </Button>
         </div>
       </div>
@@ -147,7 +147,7 @@ export function ArtifactSidebar() {
       {/* Streaming Status Banner */}
       {isStreaming && (
         <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 text-blue-800 text-sm flex items-center gap-2">
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <Loader2 className="size-4 animate-spin" />
           AI is generating content... (editing disabled)
         </div>
       )}

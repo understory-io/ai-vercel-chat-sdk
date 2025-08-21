@@ -222,7 +222,7 @@ export async function POST(request: Request) {
     await createStreamId({ streamId, chatId: id });
 
     // Configure different settings for different model types
-    const isGPTModel = selectedChatModel.includes('chat-model') && !selectedChatModel.includes('claude');
+    const isGPTModel = (selectedChatModel.includes('chat-model') || selectedChatModel.includes('gpt41')) && !selectedChatModel.includes('claude');
     const isClaude = selectedChatModel.includes('claude');
     const provider = isClaude ? 'anthropic' : isGPTModel ? 'openai' : 'unknown';
     
@@ -237,6 +237,9 @@ export async function POST(request: Request) {
         break;
       case 'chat-model':
         modelName = 'GPT-5';
+        break;
+      case 'gpt41-model':
+        modelName = 'GPT-4.1';
         break;
       default:
         modelName = selectedChatModel;
@@ -414,6 +417,24 @@ export async function POST(request: Request) {
           stage: 'streaming',
         });
 
+        // Detect specific API error types
+        let errorType = 'api_error';
+        const errorMessage = errorObj.message.toLowerCase();
+
+        if (errorMessage.includes('rate limit') || 
+            errorMessage.includes('too many requests') ||
+            errorMessage.includes('quota exceeded') ||
+            errorMessage.includes('usage limit')) {
+          errorType = 'api_rate_limit';
+        } else if (errorMessage.includes('authentication') || 
+                   errorMessage.includes('unauthorized') || 
+                   errorMessage.includes('invalid api key')) {
+          errorType = 'unauthorized';
+        } else if (errorMessage.includes('insufficient funds') ||
+                   errorMessage.includes('billing')) {
+          errorType = 'forbidden';
+        }
+
         requestContext.logger.error(
           {
             event: 'chat_request_stream_error',
@@ -424,12 +445,21 @@ export async function POST(request: Request) {
             error: {
               message: errorObj.message,
               stack: errorObj.stack,
+              detectedType: errorType,
             },
           },
           `Chat stream failed after ${duration.toFixed(2)}ms using ${modelName} (${provider}): ${errorObj.message}`,
         );
 
-        return 'Oops, an error occurred!';
+        // Return an error message that can be handled by the AI SDK
+        // The AI SDK will call the frontend's onError handler with this message
+        const streamErrorMessage = errorMessage.includes('rate limit') || errorMessage.includes('quota exceeded')
+          ? 'The AI service is currently experiencing high demand. Please wait a few minutes before trying again.'
+          : errorMessage.includes('authentication') || errorMessage.includes('unauthorized')
+          ? 'Authentication error with the AI service. Please try again.'
+          : 'The AI service is temporarily unavailable. Please try again in a few minutes.';
+        
+        return streamErrorMessage;
       },
     });
 

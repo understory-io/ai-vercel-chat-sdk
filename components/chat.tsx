@@ -21,6 +21,8 @@ import { useAutoResume } from '@/hooks/use-auto-resume';
 import { ChatSDKError } from '@/lib/errors';
 import type { Attachment, ChatMessage } from '@/lib/types';
 import { useDataStream } from './data-stream-provider';
+import { ErrorMessage } from './error-message';
+import { AnimatePresence } from 'framer-motion';
 
 export function Chat({
   id,
@@ -82,13 +84,57 @@ export function Chat({
     },
     onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey));
+      setChatError(null); // Clear any previous errors on successful completion
     },
     onError: (error) => {
+      console.log('Chat error received:', error);
+      
       if (error instanceof ChatSDKError) {
-        toast({
-          type: 'error',
-          description: error.message,
-        });
+        setChatError(error);
+        
+        // Show toast for rate limits and serious errors
+        if (error.type === 'rate_limit' || error.type === 'api_rate_limit' || error.type === 'api_error') {
+          toast({
+            type: 'error',
+            description: error.message,
+          });
+        }
+      } else {
+        // Handle streaming errors that come as strings or Error objects
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        // Detect error type based on message content
+        let errorType: 'rate_limit' | 'api_rate_limit' | 'api_error' | 'general' = 'general';
+        
+        if (errorMessage.includes('high demand') || 
+            errorMessage.includes('rate limit') || 
+            errorMessage.includes('quota exceeded')) {
+          errorType = 'api_rate_limit';
+        } else if (errorMessage.includes('authentication') || 
+                   errorMessage.includes('unauthorized')) {
+          errorType = 'api_error';
+        } else if (errorMessage.includes('unavailable') || 
+                   errorMessage.includes('service')) {
+          errorType = 'api_error';
+        }
+        
+        // Create a mock ChatSDKError for consistent handling
+        const mockError = {
+          type: errorType,
+          message: errorMessage,
+          surface: 'chat' as const,
+          statusCode: 500,
+        };
+        
+        setChatError(mockError as ChatSDKError);
+        
+        // Show toast for important errors
+        if (errorType === 'api_rate_limit' || errorType === 'api_error') {
+          toast({
+            type: 'error',
+            description: errorMessage,
+          });
+        }
       }
     },
   });
@@ -116,6 +162,7 @@ export function Chat({
   );
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
+  const [chatError, setChatError] = useState<ChatSDKError | null>(null);
 
   useAutoResume({
     autoResume,
@@ -145,6 +192,24 @@ export function Chat({
           regenerate={regenerate}
           isReadonly={isReadonly}
         />
+
+        {/* Error Message Display */}
+        <AnimatePresence>
+          {chatError && (
+            <div className="px-4 pb-4">
+              <ErrorMessage
+                type={chatError.type === 'rate_limit' ? 'rate_limit' : 
+                      chatError.type === 'api_rate_limit' ? 'api_rate_limit' :
+                      chatError.type === 'api_error' ? 'api_error' : 'general'}
+                message={chatError.message}
+                onRetry={() => {
+                  setChatError(null);
+                  // Could potentially retry the last message here
+                }}
+              />
+            </div>
+          )}
+        </AnimatePresence>
 
         <form className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">
           {!isReadonly && (

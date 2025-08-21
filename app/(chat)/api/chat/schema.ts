@@ -7,7 +7,10 @@ const textPartSchema = z.object({
 
 const filePartSchema = z.object({
   type: z.enum(['file']),
-  mediaType: z.enum(['image/jpeg', 'image/png']),
+  mediaType: z.enum([
+    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+    'application/pdf', 'text/plain', 'text/markdown', 'application/json', 'text/csv'
+  ]),
   name: z.string().min(1).max(100),
   url: z.string().url(),
 });
@@ -21,7 +24,7 @@ export const postRequestBodySchema = z.object({
     role: z.enum(['user']),
     parts: z.array(partSchema),
   }),
-  selectedChatModel: z.enum(['chat-model', 'claude-chat-model', 'claude-sonnet-model']),
+  selectedChatModel: z.enum(['chat-model', 'claude-chat-model', 'claude-sonnet-model', 'gpt41-model']),
   selectedVisibilityType: z.enum(['public', 'private']),
 });
 

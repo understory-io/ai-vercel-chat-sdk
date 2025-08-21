@@ -1,4 +1,4 @@
-export const DEFAULT_CHAT_MODEL: string = 'claude-sonnet-model';
+export const DEFAULT_CHAT_MODEL: string = 'gpt41-model';
 
 export interface ChatModel {
   id: string;
@@ -11,6 +11,11 @@ export const chatModels: Array<ChatModel> = [
     id: 'claude-sonnet-model',
     name: 'Claude Sonnet 4',
     description: 'Fast, capable, and reliable - best balance of speed and quality',
+  },
+  {
+    id: 'gpt41-model',
+    name: 'GPT-4.1',
+    description: 'OpenAI\'s flagship model with vision, 1M context window, and generous rate limits',
   },
   {
     id: 'claude-chat-model',

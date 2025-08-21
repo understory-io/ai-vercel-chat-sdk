@@ -4,6 +4,8 @@ export type ErrorType =
   | 'forbidden'
   | 'not_found'
   | 'rate_limit'
+  | 'api_rate_limit'
+  | 'api_error'
   | 'offline';
 
 export type Surface =
@@ -89,6 +91,10 @@ export function getMessageByErrorCode(errorCode: ErrorCode): string {
 
     case 'rate_limit:chat':
       return 'You have exceeded your maximum number of messages for the day. Please try again later.';
+    case 'api_rate_limit:chat':
+      return 'The AI service is currently experiencing high demand. Please wait a few minutes before trying again.';
+    case 'api_error:chat':
+      return 'The AI service is temporarily unavailable. Please try again in a few minutes.';
     case 'not_found:chat':
       return 'The requested chat was not found. Please check the chat ID and try again.';
     case 'forbidden:chat':
@@ -123,7 +129,10 @@ function getStatusCodeByType(type: ErrorType) {
     case 'not_found':
       return 404;
     case 'rate_limit':
+    case 'api_rate_limit':
       return 429;
+    case 'api_error':
+      return 502;
     case 'offline':
       return 503;
     default:

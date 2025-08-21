@@ -84,7 +84,10 @@ const PurePreviewMessage = ({
             {attachmentsFromMessage.length > 0 && (
               <div
                 data-testid={`message-attachments`}
-                className="flex flex-row justify-end gap-2"
+                className={cn("flex flex-row gap-2", {
+                  'justify-end': message.role === 'user',
+                  'justify-start': message.role === 'assistant'
+                })}
               >
                 {attachmentsFromMessage.map((attachment) => (
                   <PreviewAttachment
@@ -116,7 +119,19 @@ const PurePreviewMessage = ({
               if (type === 'text') {
                 if (mode === 'view') {
                   return (
-                    <div key={key} className="flex flex-row gap-2 items-start">
+                    <div key={key} className={cn("flex flex-row gap-2 items-start", {
+                      'flex-row-reverse': message.role === 'user'
+                    })}>
+                      <div
+                        data-testid="message-content"
+                        className={cn('flex flex-col gap-4', {
+                          'bg-primary text-primary-foreground px-3 py-2 rounded-xl':
+                            message.role === 'user',
+                        })}
+                      >
+                        <Markdown>{sanitizeText(part.text)}</Markdown>
+                      </div>
+
                       {message.role === 'user' && !isReadonly && (
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -134,16 +149,6 @@ const PurePreviewMessage = ({
                           <TooltipContent>Edit message</TooltipContent>
                         </Tooltip>
                       )}
-
-                      <div
-                        data-testid="message-content"
-                        className={cn('flex flex-col gap-4', {
-                          'bg-primary text-primary-foreground px-3 py-2 rounded-xl':
-                            message.role === 'user',
-                        })}
-                      >
-                        <Markdown>{sanitizeText(part.text)}</Markdown>
-                      </div>
                     </div>
                   );
                 }
@@ -389,7 +394,7 @@ export const ThinkingMessage = () => {
               {[0, 1, 2].map((i) => (
                 <motion.div
                   key={i}
-                  className="w-2 h-2 bg-muted-foreground rounded-full"
+                  className="size-2 bg-muted-foreground rounded-full"
                   animate={{
                     y: [0, -8, 0],
                     opacity: [0.4, 1, 0.4]

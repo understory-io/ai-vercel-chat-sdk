@@ -17,10 +17,12 @@ import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
 import { ArrowUpIcon, PaperclipIcon, StopIcon } from './icons';
+import { NotionIcon, SlackIcon } from './notion-slack-icons';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { SuggestedActions } from './suggested-actions';
+import { NotionSelectorModal } from './notion-selector-modal';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -200,12 +202,61 @@ function PureMultimodalInput({
   );
 
   const { isAtBottom, scrollToBottom } = useScrollToBottom();
+  const [notionModalOpen, setNotionModalOpen] = useState(false);
+  const [selectedNotionPages, setSelectedNotionPages] = useState<Array<{id: string, title: string, path: string, lastModified: string}>>([]);
 
   useEffect(() => {
     if (status === 'submitted') {
       scrollToBottom();
     }
   }, [status, scrollToBottom]);
+
+  // Handle paste events for images
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const files: File[] = [];
+      
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const file = item.getAsFile();
+          if (file) {
+            files.push(file);
+          }
+        }
+      }
+
+      if (files.length > 0) {
+        e.preventDefault();
+        setUploadQueue(files.map((file) => file.name));
+
+        try {
+          const uploadPromises = files.map((file) => uploadFile(file));
+          const uploadedAttachments = await Promise.all(uploadPromises);
+          const successfullyUploadedAttachments = uploadedAttachments.filter(
+            (attachment) => attachment !== undefined,
+          );
+
+          setAttachments((currentAttachments) => [
+            ...currentAttachments,
+            ...successfullyUploadedAttachments,
+          ]);
+        } catch (error) {
+          console.error('Error uploading pasted images!', error);
+        } finally {
+          setUploadQueue([]);
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => {
+      document.removeEventListener('paste', handlePaste);
+    };
+  }, [setAttachments]);
 
   return (
     <div className="relative w-full flex flex-col gap-4">
@@ -253,73 +304,97 @@ function PureMultimodalInput({
         tabIndex={-1}
       />
 
-      {(attachments.length > 0 || uploadQueue.length > 0) && (
-        <div
-          data-testid="attachments-preview"
-          className="flex flex-row gap-2 overflow-x-scroll items-end"
-        >
-          {attachments.map((attachment) => (
-            <PreviewAttachment key={attachment.url} attachment={attachment} />
-          ))}
+      <div className={cx(
+        'relative rounded-2xl bg-muted border border-border dark:border-zinc-700 transition-all duration-200',
+        (attachments.length > 0 || uploadQueue.length > 0) ? 'pb-12' : 'pb-10'
+      )}>
+        {(attachments.length > 0 || uploadQueue.length > 0) && (
+          <div className="p-3 pb-0">
+            <div
+              data-testid="attachments-preview"
+              className="flex flex-row gap-2 overflow-x-auto pb-2 scrollbar-hide"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {attachments.map((attachment) => (
+                <PreviewAttachment 
+                  key={attachment.url} 
+                  attachment={attachment} 
+                  onRemove={() => {
+                    setAttachments((prev) => prev.filter((a) => a.url !== attachment.url));
+                  }}
+                />
+              ))}
 
-          {uploadQueue.map((filename) => (
-            <PreviewAttachment
-              key={filename}
-              attachment={{
-                url: '',
-                name: filename,
-                contentType: '',
-              }}
-              isUploading={true}
-            />
-          ))}
-        </div>
-      )}
-
-      <Textarea
-        data-testid="multimodal-input"
-        ref={textareaRef}
-        placeholder="Send a message..."
-        value={input}
-        onChange={handleInput}
-        className={cx(
-          'min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-muted pb-10 dark:border-zinc-700',
-          className,
+              {uploadQueue.map((filename) => (
+                <PreviewAttachment
+                  key={filename}
+                  attachment={{
+                    url: '',
+                    name: filename,
+                    contentType: '',
+                  }}
+                  isUploading={true}
+                />
+              ))}
+            </div>
+          </div>
         )}
-        rows={2}
-        autoFocus
-        onKeyDown={(event) => {
-          if (
-            event.key === 'Enter' &&
-            !event.shiftKey &&
-            !event.nativeEvent.isComposing
-          ) {
-            event.preventDefault();
 
-            if (status !== 'ready') {
-              toast.error('Please wait for the model to finish its response!');
-            } else {
-              submitForm();
+        <Textarea
+          data-testid="multimodal-input"
+          ref={textareaRef}
+          placeholder="Send a message..."
+          value={input}
+          onChange={handleInput}
+          className={cx(
+            'min-h-[24px] max-h-[350px] overflow-hidden resize-none border-0 bg-transparent !text-base focus-visible:ring-0 focus-visible:ring-offset-0 px-3 py-2',
+            (attachments.length > 0 || uploadQueue.length > 0) ? 'pt-0' : 'pt-2',
+            className,
+          )}
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          rows={2}
+          autoFocus
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault();
+
+              if (status !== 'ready') {
+                toast.error('Please wait for the model to finish its response!');
+              } else {
+                submitForm();
+              }
             }
-          }
-        }}
+          }}
+        />
+
+        <div className="absolute bottom-0 left-0 p-2 flex flex-row gap-1">
+          <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+          <NotionButton status={status} onClick={() => setNotionModalOpen(true)} />
+          <SlackButton status={status} />
+        </div>
+
+        <div className="absolute bottom-0 right-0 p-2">
+          {status === 'submitted' ? (
+            <StopButton stop={stop} setMessages={setMessages} />
+          ) : (
+            <SendButton
+              input={input}
+              submitForm={submitForm}
+              uploadQueue={uploadQueue}
+            />
+          )}
+        </div>
+      </div>
+
+      <NotionSelectorModal
+        open={notionModalOpen}
+        onOpenChange={setNotionModalOpen}
+        onSelect={setSelectedNotionPages}
       />
-
-      <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
-        <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-      </div>
-
-      <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
-        {status === 'submitted' ? (
-          <StopButton stop={stop} setMessages={setMessages} />
-        ) : (
-          <SendButton
-            input={input}
-            submitForm={submitForm}
-            uploadQueue={uploadQueue}
-          />
-        )}
-      </div>
     </div>
   );
 }
@@ -416,3 +491,52 @@ const SendButton = memo(PureSendButton, (prevProps, nextProps) => {
   if (prevProps.input !== nextProps.input) return false;
   return true;
 });
+
+function PureNotionButton({
+  status,
+  onClick,
+}: {
+  status: UseChatHelpers<ChatMessage>['status'];
+  onClick?: () => void;
+}) {
+  return (
+    <Button
+      data-testid="notion-button"
+      className="rounded-md p-[7px] h-fit dark:border-zinc-700 hover:dark:bg-zinc-900 hover:bg-zinc-200"
+      onClick={(event) => {
+        event.preventDefault();
+        onClick?.();
+      }}
+      disabled={status !== 'ready'}
+      variant="ghost"
+    >
+      <NotionIcon size={16} />
+    </Button>
+  );
+}
+
+const NotionButton = memo(PureNotionButton);
+
+function PureSlackButton({
+  status,
+}: {
+  status: UseChatHelpers<ChatMessage>['status'];
+}) {
+  return (
+    <Button
+      data-testid="slack-button"
+      className="rounded-md p-[7px] h-fit dark:border-zinc-700 hover:dark:bg-zinc-900 hover:bg-zinc-200"
+      onClick={(event) => {
+        event.preventDefault();
+        // TODO: Open Slack selector modal
+        console.log('Slack button clicked');
+      }}
+      disabled={status !== 'ready'}
+      variant="ghost"
+    >
+      <SlackIcon size={16} />
+    </Button>
+  );
+}
+
+const SlackButton = memo(PureSlackButton);
