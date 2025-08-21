@@ -205,6 +205,25 @@ function PureMultimodalInput({
   const [notionModalOpen, setNotionModalOpen] = useState(false);
   const [selectedNotionPages, setSelectedNotionPages] = useState<Array<{id: string, title: string, path: string, lastModified: string}>>([]);
 
+  // Convert selected Notion pages to attachments
+  useEffect(() => {
+    const notionAttachments = selectedNotionPages.map((page) => ({
+      name: page.title,
+      url: `notion://${page.id}`,
+      contentType: 'application/notion',
+      type: 'notion' as const,
+      notionId: page.id,
+      notionPath: page.path,
+      lastModified: page.lastModified,
+    }));
+
+    setAttachments((prev) => {
+      // Remove existing notion attachments and add new ones
+      const nonNotionAttachments = prev.filter(a => a.type !== 'notion');
+      return [...nonNotionAttachments, ...notionAttachments];
+    });
+  }, [selectedNotionPages, setAttachments]);
+
   useEffect(() => {
     if (status === 'submitted') {
       scrollToBottom();
@@ -392,7 +411,13 @@ function PureMultimodalInput({
 
       <NotionSelectorModal
         open={notionModalOpen}
-        onOpenChange={setNotionModalOpen}
+        onOpenChange={(open) => {
+          setNotionModalOpen(open);
+          if (!open) {
+            // Modal closed, clear the temporary selection state
+            // The actual attachments are managed by the useEffect above
+          }
+        }}
         onSelect={setSelectedNotionPages}
       />
     </div>

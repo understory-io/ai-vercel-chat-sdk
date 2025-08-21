@@ -54,4 +54,8 @@ export interface Attachment {
   name: string;
   url: string;
   contentType: string;
+  type?: 'file' | 'notion';
+  notionId?: string;
+  notionPath?: string;
+  lastModified?: string;
 }
