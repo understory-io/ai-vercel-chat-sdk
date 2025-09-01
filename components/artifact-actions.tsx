@@ -8,10 +8,9 @@ import { toast } from 'sonner';
 
 interface ArtifactActionsProps {
   artifact: UIArtifact;
-  handleVersionChange: (type: 'next' | 'prev' | 'toggle' | 'latest') => void;
+  handleVersionChange: (type: 'next' | 'prev' | 'latest') => void;
   currentVersionIndex: number;
   isCurrentVersion: boolean;
-  mode: 'edit' | 'diff';
   metadata: any;
   setMetadata: Dispatch<SetStateAction<any>>;
 }
@@ -21,7 +20,6 @@ function PureArtifactActions({
   handleVersionChange,
   currentVersionIndex,
   isCurrentVersion,
-  mode,
   metadata,
   setMetadata,
 }: ArtifactActionsProps) {
@@ -40,7 +38,6 @@ function PureArtifactActions({
     handleVersionChange,
     currentVersionIndex,
     isCurrentVersion,
-    mode,
     metadata,
     setMetadata,
   };

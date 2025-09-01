@@ -121,16 +121,39 @@ export function FileAttachment({
   if (type === 'notion') {
     const config = fileTypeConfig.notion;
     const displayName = truncateFileName(name || 'Notion Doc');
+    const contentStatus = (attachment as any).contentStatus;
+    const isContentLoading = contentStatus === 'loading';
+    const hasContentError = contentStatus === 'error';
     
     return (
       <div className="relative group">
-        <div className="border border-border/30 rounded-lg">
+        <div className={`border rounded-lg ${
+          hasContentError ? 'border-red-300 bg-red-50/10' : 'border-border/30'
+        }`}>
           <div className="h-16 max-w-[200px] min-w-[120px] bg-muted rounded-lg flex items-center gap-3 px-3 py-2">
-            {/* Notion Icon */}
+            {/* Notion Icon with Loading State */}
             <div className="relative shrink-0">
-              <div className={`size-8 rounded flex items-center justify-center ${config.color} ${config.textColor}`}>
-                <NotionIcon size={14} />
-              </div>
+              {isContentLoading ? (
+                <div className="size-8 rounded flex items-center justify-center bg-gray-200 dark:bg-gray-700">
+                  <svg className="size-4 animate-spin text-gray-600">
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="6"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      fill="none"
+                      strokeDasharray="38"
+                      strokeDashoffset="19"
+                      className="transition-all duration-1000"
+                    />
+                  </svg>
+                </div>
+              ) : (
+                <div className={`size-8 rounded flex items-center justify-center ${config.color} ${config.textColor}`}>
+                  <NotionIcon size={14} />
+                </div>
+              )}
             </div>
 
             {/* File info */}
@@ -139,7 +162,7 @@ export function FileAttachment({
                 {displayName}
               </div>
               <div className="text-[10px] text-muted-foreground uppercase">
-                NOTION
+                {isContentLoading ? 'Loading...' : hasContentError ? 'Error' : 'Loaded'}
               </div>
             </div>
 

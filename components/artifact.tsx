@@ -96,7 +96,6 @@ function PureArtifact({
     fetcher,
   );
 
-  const [mode, setMode] = useState<'edit' | 'diff'>('edit');
   const [document, setDocument] = useState<Document | null>(null);
   const [currentVersionIndex, setCurrentVersionIndex] = useState(-1);
 
@@ -194,16 +193,11 @@ function PureArtifact({
     return documents[index].content ?? '';
   }
 
-  const handleVersionChange = (type: 'next' | 'prev' | 'toggle' | 'latest') => {
+  const handleVersionChange = (type: 'next' | 'prev' | 'latest' | 'toggle') => {
     if (!documents) return;
 
     if (type === 'latest') {
       setCurrentVersionIndex(documents.length - 1);
-      setMode('edit');
-    }
-
-    if (type === 'toggle') {
-      setMode((mode) => (mode === 'edit' ? 'diff' : 'edit'));
     }
 
     if (type === 'prev') {
@@ -214,6 +208,8 @@ function PureArtifact({
       if (currentVersionIndex < documents.length - 1) {
         setCurrentVersionIndex((index) => index + 1);
       }
+    } else if (type === 'toggle') {
+      setCurrentVersionIndex(isCurrentVersion ? 0 : documents.length - 1);
     }
   };
 
@@ -273,12 +269,9 @@ function PureArtifact({
   return (
     <AnimatePresence>
       {artifact.isVisible && (
-        <motion.div
+        <div
           data-testid="artifact"
           className="flex flex-row h-dvh w-dvw fixed top-0 left-0 z-50 bg-transparent"
-          initial={{ opacity: 1 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { delay: 0.4 } }}
         >
           {!isMobile && (
             <motion.div
@@ -360,71 +353,15 @@ function PureArtifact({
             </motion.div>
           )}
 
-          <motion.div
+          <div
             className="fixed dark:bg-muted bg-background h-screen flex flex-col md:border-l dark:border-zinc-700 border-zinc-200"
-            initial={
-              isMobile
-                ? {
-                    opacity: 1,
-                    x: artifact.boundingBox.left,
-                    y: artifact.boundingBox.top,
-                    height: artifact.boundingBox.height,
-                    width: artifact.boundingBox.width,
-                    borderRadius: 50,
-                  }
-                : {
-                    opacity: 1,
-                    x: artifact.boundingBox.left,
-                    y: artifact.boundingBox.top,
-                    height: artifact.boundingBox.height,
-                    width: artifact.boundingBox.width,
-                    borderRadius: 50,
-                  }
-            }
-            animate={
-              isMobile
-                ? {
-                    opacity: 1,
-                    x: 0,
-                    y: 0,
-                    height: windowHeight,
-                    width: windowWidth ? windowWidth : 'calc(100dvw)',
-                    borderRadius: 0,
-                    transition: {
-                      delay: 0,
-                      type: 'spring',
-                      stiffness: 200,
-                      damping: 30,
-                      duration: 5000,
-                    },
-                  }
-                : {
-                    opacity: 1,
-                    x: 400,
-                    y: 0,
-                    height: windowHeight,
-                    width: windowWidth
-                      ? windowWidth - 400
-                      : 'calc(100dvw-400px)',
-                    borderRadius: 0,
-                    transition: {
-                      delay: 0,
-                      type: 'spring',
-                      stiffness: 200,
-                      damping: 30,
-                      duration: 5000,
-                    },
-                  }
-            }
-            exit={{
-              opacity: 0,
-              scale: 0.5,
-              transition: {
-                delay: 0.1,
-                type: 'spring',
-                stiffness: 600,
-                damping: 30,
-              },
+            style={{
+              left: isMobile ? 0 : 400,
+              top: 0,
+              width: isMobile ? '100vw' : 'calc(100vw - 400px)',
+              height: '100vh',
+              minWidth: '300px',
+              minHeight: '300px',
             }}
           >
             <div className="p-2 flex flex-row justify-between items-start">
@@ -459,13 +396,12 @@ function PureArtifact({
                 currentVersionIndex={currentVersionIndex}
                 handleVersionChange={handleVersionChange}
                 isCurrentVersion={isCurrentVersion}
-                mode={mode}
                 metadata={metadata}
                 setMetadata={setMetadata}
               />
             </div>
 
-            <div className="dark:bg-muted bg-background overflow-y-auto !max-w-full flex-1 min-h-0 custom-scrollbar" style={{height: '100%'}}>
+            <div className="dark:bg-muted bg-background !max-w-full flex flex-col" style={{height: 'calc(100vh - 4rem)', width: '100%'}}>
               <artifactDefinition.content
                 title={artifact.title}
                 content={
@@ -473,7 +409,6 @@ function PureArtifact({
                     ? artifact.content
                     : getDocumentContentById(currentVersionIndex)
                 }
-                mode={mode}
                 status={artifact.status}
                 currentVersionIndex={currentVersionIndex}
                 suggestions={[]}
@@ -510,8 +445,8 @@ function PureArtifact({
                 />
               )}
             </AnimatePresence>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       )}
     </AnimatePresence>
   );

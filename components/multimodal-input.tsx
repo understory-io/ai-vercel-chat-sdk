@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 
 import { ArrowUpIcon, PaperclipIcon, StopIcon } from './icons';
-import { NotionIcon, SlackIcon } from './notion-slack-icons';
+import { NotionIcon } from './notion-slack-icons';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
@@ -113,10 +113,21 @@ function PureMultimodalInput({
   const submitForm = useCallback(() => {
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
+    // Separate Notion attachments (with content) from file attachments
+    const notionAttachments = attachments.filter(a => a.type === 'notion' && a.content);
+    const fileAttachments = attachments.filter(a => a.type !== 'notion');
+
+    // Combine all Notion content with user input into a single text part
+    const notionContent = notionAttachments
+      .map(attachment => `[Notion Document: ${attachment.name}]\n\n${attachment.content}\n\n---\n`)
+      .join('\n');
+    
+    const combinedText = notionContent ? `${notionContent}\n${input}` : input;
+
     sendMessage({
       role: 'user',
       parts: [
-        ...attachments.map((attachment) => ({
+        ...fileAttachments.map((attachment) => ({
           type: 'file' as const,
           url: attachment.url,
           name: attachment.name,
@@ -124,7 +135,7 @@ function PureMultimodalInput({
         })),
         {
           type: 'text',
-          text: input,
+          text: combinedText,
         },
       ],
     });
@@ -215,6 +226,9 @@ function PureMultimodalInput({
       notionId: page.id,
       notionPath: page.path,
       lastModified: page.lastModified,
+      content: (page as any).content || '',
+      contentStatus: (page as any).contentStatus || 'pending' as const,
+      contentError: (page as any).contentError,
     }));
 
     setAttachments((prev) => {
@@ -393,7 +407,6 @@ function PureMultimodalInput({
         <div className="absolute bottom-0 left-0 p-2 flex flex-row gap-1">
           <AttachmentsButton fileInputRef={fileInputRef} status={status} />
           <NotionButton status={status} onClick={() => setNotionModalOpen(true)} />
-          <SlackButton status={status} />
         </div>
 
         <div className="absolute bottom-0 right-0 p-2">
@@ -542,26 +555,3 @@ function PureNotionButton({
 
 const NotionButton = memo(PureNotionButton);
 
-function PureSlackButton({
-  status,
-}: {
-  status: UseChatHelpers<ChatMessage>['status'];
-}) {
-  return (
-    <Button
-      data-testid="slack-button"
-      className="rounded-md p-[7px] h-fit dark:border-zinc-700 hover:dark:bg-zinc-900 hover:bg-zinc-200"
-      onClick={(event) => {
-        event.preventDefault();
-        // TODO: Open Slack selector modal
-        console.log('Slack button clicked');
-      }}
-      disabled={status !== 'ready'}
-      variant="ghost"
-    >
-      <SlackIcon size={16} />
-    </Button>
-  );
-}
-
-const SlackButton = memo(PureSlackButton);

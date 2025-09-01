@@ -1,15 +1,14 @@
 import { Artifact } from '@/components/create-artifact';
-import { DiffView } from '@/components/diffview';
 import { DocumentSkeleton } from '@/components/document-skeleton';
 import { Editor } from '@/components/text-editor';
 import {
-  ClockRewind,
   CopyIcon,
   MessageIcon,
   PenIcon,
   RedoIcon,
   UndoIcon,
 } from '@/components/icons';
+import { NotionIcon } from '@/components/notion-slack-icons';
 import type { Suggestion } from '@/lib/db/schema';
 import { toast } from 'sonner';
 import { getSuggestions } from '../actions';
@@ -54,13 +53,11 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
     }
   },
   content: ({
-    mode,
     status,
     content,
     isCurrentVersion,
     currentVersionIndex,
     onSaveContent,
-    getDocumentContentById,
     isLoading,
     metadata,
     isInline,
@@ -69,25 +66,20 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
       return <DocumentSkeleton artifactKind="text" />;
     }
 
-    if (mode === 'diff') {
-      const oldContent = getDocumentContentById(currentVersionIndex - 1);
-      const newContent = getDocumentContentById(currentVersionIndex);
-
-      return <DiffView oldContent={oldContent} newContent={newContent} />;
-    }
-
     return (
       <>
-        <div className={`flex flex-row py-8 px-4 ${isInline ? 'md:p-4' : 'md:p-20 h-full overflow-y-auto custom-scrollbar'}`}>
-          <Editor
-            content={content}
-            suggestions={metadata ? metadata.suggestions : []}
-            isCurrentVersion={isCurrentVersion}
-            currentVersionIndex={currentVersionIndex}
-            status={status}
-            onSaveContent={onSaveContent}
-            isInline={isInline}
-          />
+        <div className={`flex flex-col h-full ${isInline ? 'p-4' : 'p-8'}`}>
+          <div className="flex flex-col flex-1 w-full max-w-none overflow-hidden">
+            <Editor
+              content={content}
+              suggestions={metadata ? metadata.suggestions : []}
+              isCurrentVersion={isCurrentVersion}
+              currentVersionIndex={currentVersionIndex}
+              status={status}
+              onSaveContent={onSaveContent}
+              isInline={isInline}
+            />
+          </div>
 
           {metadata?.suggestions && metadata.suggestions.length > 0 ? (
             <div className="md:hidden h-dvh w-12 shrink-0" />
@@ -97,20 +89,6 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
     );
   },
   actions: [
-    {
-      icon: <ClockRewind size={18} />,
-      description: 'View changes',
-      onClick: ({ handleVersionChange }) => {
-        handleVersionChange('toggle');
-      },
-      isDisabled: ({ currentVersionIndex, setMetadata }) => {
-        if (currentVersionIndex === 0) {
-          return true;
-        }
-
-        return false;
-      },
-    },
     {
       icon: <UndoIcon size={18} />,
       description: 'View Previous version',
@@ -145,6 +123,43 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
       onClick: ({ content }) => {
         navigator.clipboard.writeText(content);
         toast.success('Copied to clipboard!');
+      },
+    },
+    {
+      icon: <NotionIcon size={18} />,
+      description: 'Export to Notion',
+      onClick: async ({ content }) => {
+        try {
+          // Extract title from first line or use default
+          const lines = content.split('\n').filter(line => line.trim());
+          const title = lines[0]?.replace(/^#+\s*/, '') || 'Exported Document';
+          
+          const response = await fetch('/api/notion/export', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              title,
+              content,
+            }),
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            toast.success('Document exported to Notion successfully!');
+            if (result.url) {
+              // Open the new Notion page
+              window.open(result.url, '_blank');
+            }
+          } else {
+            toast.error(`Export failed: ${result.error}`);
+          }
+        } catch (error) {
+          toast.error('Failed to export to Notion');
+          console.error('Export error:', error);
+        }
       },
     },
   ],

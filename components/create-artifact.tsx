@@ -7,10 +7,9 @@ import type { DataUIPart } from 'ai';
 
 export type ArtifactActionContext<M = any> = {
   content: string;
-  handleVersionChange: (type: 'next' | 'prev' | 'toggle' | 'latest') => void;
+  handleVersionChange: (type: 'next' | 'prev' | 'latest') => void;
   currentVersionIndex: number;
   isCurrentVersion: boolean;
-  mode: 'edit' | 'diff';
   metadata: M;
   setMetadata: Dispatch<SetStateAction<M>>;
 };
@@ -36,7 +35,6 @@ export type ArtifactToolbarItem = {
 interface ArtifactContent<M = any> {
   title: string;
   content: string;
-  mode: 'edit' | 'diff';
   isCurrentVersion: boolean;
   currentVersionIndex: number;
   status: 'streaming' | 'idle';

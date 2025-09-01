@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NotionIcon } from './notion-slack-icons';
 import { CheckCircleFillIcon } from './icons';
-import { X } from 'lucide-react';
+import { X, AlertCircle, RefreshCw } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { toast } from 'sonner';
 
 interface NotionPage {
   id: string;
@@ -15,10 +16,36 @@ interface NotionPage {
   lastModified: string;
 }
 
+interface NotionApiResponse {
+  success: boolean;
+  pages?: NotionPage[];
+  error?: string;
+  code?: string;
+  source?: string;
+  timestamp: number;
+  total?: number;
+  totalInDatabase?: number;
+}
+
+type LoadingState = 'idle' | 'loading' | 'error' | 'success';
+
+interface ErrorState {
+  message: string;
+  code?: string;
+  canRetry: boolean;
+}
+
 interface NotionSelectorModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelect: (selectedPages: NotionPage[]) => void;
+}
+
+interface ContentFetchResult {
+  id: string;
+  content?: string;
+  status: 'success' | 'error';
+  error?: string;
 }
 
 export function NotionSelectorModal({
@@ -29,160 +56,139 @@ export function NotionSelectorModal({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPages, setSelectedPages] = useState<NotionPage[]>([]);
   const [pages, setPages] = useState<NotionPage[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingState, setLoadingState] = useState<LoadingState>('idle');
+  const [error, setError] = useState<ErrorState | null>(null);
   const [navigationIndex, setNavigationIndex] = useState(-1);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const [totalInDatabase, setTotalInDatabase] = useState<number>(0);
+  const [isLoadingContent, setIsLoadingContent] = useState<boolean>(false);
+  const [contentProgress, setContentProgress] = useState<number>(0);
 
-  // Mock data for now - will be replaced with MCP integration
-  const mockPages: NotionPage[] = [
-    {
-      id: '1',
-      title: 'Product Requirements Document',
-      path: 'Product Docs / ... / Fin Product Docs',
-      lastModified: '2 hours ago',
-    },
-    {
-      id: '2',
-      title: 'API Documentation',
-      path: 'Product Docs / Technical / API Reference',
-      lastModified: '1 day ago',
-    },
-    {
-      id: '3',
-      title: 'User Research Findings',
-      path: 'Research / User Studies / Q2 2024',
-      lastModified: '3 days ago',
-    },
-    {
-      id: '4',
-      title: 'Feature Specifications',
-      path: 'Product Docs / Features / Core Features',
-      lastModified: '1 week ago',
-    },
-    {
-      id: '5',
-      title: 'Automated Report Access',
-      path: 'Product Docs / ... / Fin Product Docs',
-      lastModified: '2 days ago',
-    },
-    {
-      id: '6',
-      title: 'Resource Management',
-      path: 'General / ... / Opportunities',
-      lastModified: '5 days ago',
-    },
-    {
-      id: '7',
-      title: 'Marketing Strategy Q1 2024',
-      path: 'Marketing / Strategy / Quarterly Plans',
-      lastModified: '1 week ago',
-    },
-    {
-      id: '8',
-      title: 'Engineering Onboarding Guide',
-      path: 'Engineering / Documentation / Onboarding',
-      lastModified: '2 weeks ago',
-    },
-    {
-      id: '9',
-      title: 'Customer Interview Notes',
-      path: 'Research / Interviews / Customer Feedback',
-      lastModified: '3 days ago',
-    },
-    {
-      id: '10',
-      title: 'Security Audit Report',
-      path: 'Security / Audits / 2024 Q1',
-      lastModified: '1 month ago',
-    },
-    {
-      id: '11',
-      title: 'Database Schema Design',
-      path: 'Engineering / Database / Architecture',
-      lastModified: '1 week ago',
-    },
-    {
-      id: '12',
-      title: 'Brand Guidelines v2.0',
-      path: 'Design / Brand / Guidelines',
-      lastModified: '2 months ago',
-    },
-    {
-      id: '13',
-      title: 'Sales Playbook',
-      path: 'Sales / Resources / Playbooks',
-      lastModified: '3 weeks ago',
-    },
-    {
-      id: '14',
-      title: 'A/B Testing Results Dashboard',
-      path: 'Analytics / Testing / Results',
-      lastModified: '5 days ago',
-    },
-    {
-      id: '15',
-      title: 'Mobile App Wireframes',
-      path: 'Design / Mobile / Wireframes',
-      lastModified: '1 week ago',
-    },
-    {
-      id: '16',
-      title: 'Compliance Documentation',
-      path: 'Legal / Compliance / GDPR',
-      lastModified: '2 months ago',
-    },
-    {
-      id: '17',
-      title: 'Performance Metrics Q4',
-      path: 'Analytics / Performance / Quarterly',
-      lastModified: '1 month ago',
-    },
-    {
-      id: '18',
-      title: 'Team Retrospective Notes',
-      path: 'Team / Retrospectives / Sprint 23',
-      lastModified: '1 week ago',
-    },
-    {
-      id: '19',
-      title: 'Competitor Analysis Report',
-      path: 'Research / Competitive / Market Analysis',
-      lastModified: '2 weeks ago',
-    },
-    {
-      id: '20',
-      title: 'Infrastructure Monitoring Setup',
-      path: 'Engineering / DevOps / Monitoring',
-      lastModified: '4 days ago',
-    },
-  ];
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 300);
 
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch pages from API
+  const fetchPages = useCallback(async (query?: string) => {
+    setLoadingState('loading');
+    setError(null);
+
+    try {
+      const params = new URLSearchParams();
+      if (query?.trim()) {
+        params.set('q', query.trim());
+      }
+
+      const response = await fetch(`/api/notion/pages?${params}`);
+      const data: NotionApiResponse = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch pages');
+      }
+
+      setPages(data.pages || []);
+      setTotalPages(data.total || 0);
+      setTotalInDatabase(data.totalInDatabase || data.total || 0);
+      setLoadingState('success');
+
+      // Show success toast for initial load only
+      if (data.source === 'api_all' && (!query || query.trim() === '')) {
+        toast.success(`Loaded ${data.totalInDatabase || 0} pages from database`);
+      }
+
+    } catch (err) {
+      console.error('Error fetching Notion pages:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch pages';
+      
+      setError({
+        message: errorMessage,
+        code: 'FETCH_ERROR',
+        canRetry: true
+      });
+      setLoadingState('error');
+      setPages([]);
+
+      // Show error toast
+      toast.error(errorMessage);
+    }
+  }, []);
+
+// Load all pages function  
+const loadAllPages = useCallback(async () => {
+  setLoadingState('loading');
+  setError(null);
+  
+  try {
+    const response = await fetch('/api/notion/pages');
+    const data: NotionApiResponse = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to fetch pages');
+    }
+
+    setPages(data.pages || []);
+    setTotalPages(data.total || 0);
+    setTotalInDatabase(data.totalInDatabase || data.total || 0);
+    setLoadingState('success');
+    
+    toast.success(`Loaded ${data.totalInDatabase || 0} pages from database`);
+  } catch (err) {
+    console.error('Error loading pages:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Failed to fetch pages';
+    
+    setError({
+      message: errorMessage,
+      code: 'FETCH_ERROR',
+      canRetry: true
+    });
+    setLoadingState('error');
+    setPages([]);
+    
+    toast.error(errorMessage);
+  }
+}, []);
+
+// Initial load when modal opens
+useEffect(() => {
+  if (open) {
+    // Reset state when opening
+    setSelectedPages([]);
+    setSearchQuery('');
+    setDebouncedQuery('');
+    setNavigationIndex(-1);
+    setError(null);
+    setTotalPages(0);
+    
+    // Fetch ALL pages immediately on open
+    loadAllPages();
+  }
+}, [open, loadAllPages]);
+
+  // Fetch when debounced query changes
   useEffect(() => {
     if (open) {
-      setIsLoading(true);
-      // Reset state when opening
-      setSelectedPages([]);
-      setSearchQuery('');
-      // Simulate API call
-      setTimeout(() => {
-        setPages(mockPages);
-        setIsLoading(false);
-      }, 300);
+      // Always fetch when debouncedQuery changes
+      fetchPages(debouncedQuery || undefined);
     }
-  }, [open]);
+  }, [debouncedQuery, open, fetchPages]);
 
-  const filteredPages = pages.filter((page) =>
-    page.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    page.path.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Pages are already filtered by the API, no need for client-side filtering
+  const filteredPages = pages;
 
-  // Reset navigation index when search changes
+  // Reset navigation index when pages change
   useEffect(() => {
     if (filteredPages.length > 0) {
       setNavigationIndex(0);
     } else {
       setNavigationIndex(-1);
     }
-  }, [searchQuery]);
+  }, [filteredPages]);
 
   // Reset navigation when modal opens
   useEffect(() => {
@@ -202,13 +208,89 @@ export function NotionSelectorModal({
     });
   };
 
-  const handleSelect = () => {
-    onSelect(selectedPages);
-    onOpenChange(false);
+  const handleSelect = async () => {
+    if (selectedPages.length === 0) return;
+    
+    setIsLoadingContent(true);
+    setContentProgress(0);
+    
+    try {
+      // Fetch content for all selected pages
+      const response = await fetch('/api/notion/content', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          pageIds: selectedPages.map(p => p.id) 
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch page content');
+      }
+      
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch content');
+      }
+      
+      // Merge content with page metadata
+      const pagesWithContent = selectedPages.map(page => {
+        const contentResult = data.results.find((r: ContentFetchResult) => r.id === page.id);
+        return {
+          ...page,
+          content: contentResult?.content || '',
+          contentStatus: contentResult?.status === 'success' ? 'loaded' as const : 'error' as const,
+          contentError: contentResult?.error
+        };
+      });
+      
+      const successfulFetches = data.results.filter((r: ContentFetchResult) => r.status === 'success').length;
+      
+      if (successfulFetches > 0) {
+        toast.success(`Loaded content for ${successfulFetches} of ${selectedPages.length} pages`);
+      }
+      
+      if (successfulFetches < selectedPages.length) {
+        const failedCount = selectedPages.length - successfulFetches;
+        toast.error(`Failed to load content for ${failedCount} pages`);
+      }
+      
+      // Pass pages with content to parent
+      onSelect(pagesWithContent);
+      onOpenChange(false);
+      
+    } catch (error) {
+      console.error('Error fetching page content:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to fetch content');
+      
+      // Still allow selection without content (fallback)
+      const pagesWithoutContent = selectedPages.map(page => ({
+        ...page,
+        contentStatus: 'error' as const,
+        contentError: 'Failed to fetch content'
+      }));
+      
+      onSelect(pagesWithoutContent);
+      onOpenChange(false);
+    } finally {
+      setIsLoadingContent(false);
+      setContentProgress(0);
+    }
   };
 
   const handleClose = () => {
     onOpenChange(false);
+  };
+
+  const handleRetry = () => {
+    if (debouncedQuery.trim()) {
+      fetchPages(debouncedQuery);
+    } else {
+      fetchPages();
+    }
   };
 
   // Keyboard navigation handler
@@ -281,31 +363,51 @@ export function NotionSelectorModal({
           {/* Fixed Header with Search Bar */}
           <div className="flex items-center gap-3 p-6 border-b bg-background">
             <NotionIcon size={20} />
-            <div className="flex-1 relative">
-              <Input
-                placeholder="Search pages and workspaces..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-muted/50 placeholder:text-muted-foreground/60 pr-8"
-                autoFocus
-              />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 size-6 p-0 hover:bg-muted rounded-sm"
-                >
-                  <X className="size-3" />
-                </Button>
+            <div className="flex-1">
+              <div className="relative">
+                <Input
+                  placeholder="Search database pages..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-muted/50 placeholder:text-muted-foreground/60 pr-8"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 size-6 p-0 hover:bg-muted rounded-sm"
+                  >
+                    <X className="size-3" />
+                  </Button>
+                )}
+              </div>
+              {totalInDatabase > 0 && (
+                <div className="mt-2">
+                  <div className="text-xs text-muted-foreground">
+                    {searchQuery ? (
+                      `Found ${totalPages} of ${totalInDatabase} pages`
+                    ) : (
+                      `${totalInDatabase} pages in database`
+                    )}
+                  </div>
+                </div>
               )}
             </div>
             <Button
               onClick={handleSelect}
-              disabled={selectedPages.length === 0}
+              disabled={selectedPages.length === 0 || isLoadingContent}
               className="px-4 py-2 shrink-0"
             >
-              Add {selectedPages.length > 0 && selectedPages.length}
+              {isLoadingContent ? (
+                <>
+                  <RefreshCw className="size-3 animate-spin mr-1" />
+                  Loading...
+                </>
+              ) : (
+                `Add ${selectedPages.length > 0 ? selectedPages.length : ''}`
+              )}
             </Button>
             <Button
               variant="ghost"
@@ -319,9 +421,33 @@ export function NotionSelectorModal({
 
           {/* Scrollable Content Area */}
           <div className="flex-1 overflow-y-auto">
-            {isLoading ? (
+            {loadingState === 'loading' ? (
               <div className="flex items-center justify-center py-12">
-                <div className="text-sm text-muted-foreground">Loading pages...</div>
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="size-4 animate-spin" />
+                  <div className="text-sm text-muted-foreground">Loading pages...</div>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-center max-w-md">
+                  <AlertCircle className="size-8 text-red-500 mx-auto mb-3" />
+                  <div className="text-sm font-medium text-foreground mb-1">Failed to load pages</div>
+                  <div className="text-xs text-muted-foreground mb-4">
+                    {error.message}
+                  </div>
+                  {error.canRetry && (
+                    <Button
+                      onClick={handleRetry}
+                      size="sm"
+                      variant="outline"
+                      className="text-xs"
+                    >
+                      <RefreshCw className="size-3 mr-1" />
+                      Try Again
+                    </Button>
+                  )}
+                </div>
               </div>
             ) : filteredPages.length === 0 ? (
               <div className="flex items-center justify-center py-12">

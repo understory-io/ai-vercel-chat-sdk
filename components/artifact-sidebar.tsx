@@ -1,30 +1,16 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { useArtifact } from '@/hooks/use-artifact';
-import { Save, Loader2, Eye, Edit3, X, Copy } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import { Save, Loader2, X, Copy } from 'lucide-react';
+import { Editor } from '@/components/text-editor';
 import { toast } from 'sonner';
 
 const ARTIFACT_SIDEBAR_WIDTH = '50%';
 
 export function ArtifactSidebar() {
   const { artifact, setArtifact } = useArtifact();
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-
-
-  const handleContentChange = (newContent: string) => {
-    if (artifact?.status === 'streaming') return; // Prevent editing while AI is streaming
-
-    setArtifact((current) => ({
-      ...current,
-      content: newContent,
-    }));
-  };
 
   const handleTitleChange = (newTitle: string) => {
     if (artifact?.status === 'streaming') return; // Prevent editing while AI is streaming
@@ -92,22 +78,6 @@ export function ArtifactSidebar() {
         />
 
         <div className="flex items-center gap-2">
-          {/* Preview/Edit Toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsPreviewMode(!isPreviewMode)}
-            disabled={isStreaming}
-            className="size-8 p-0"
-            title={isPreviewMode ? 'Edit' : 'Preview'}
-          >
-            {isPreviewMode ? (
-              <Edit3 className="size-4" />
-            ) : (
-              <Eye className="size-4" />
-            )}
-          </Button>
-
           {/* Save Status */}
           <div className="flex items-center gap-1">
             {isStreaming ? (
@@ -153,83 +123,21 @@ export function ArtifactSidebar() {
       )}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-hidden">
-        <div className="h-full p-4 overflow-y-auto overscroll-contain custom-scrollbar">
-          {isPreviewMode ? (
-            // Preview Mode - Rendered Markdown
-            <div className="prose prose-gray max-w-none prose-sm">
-              <ReactMarkdown
-                components={{
-                  h1: ({ children }) => (
-                    <h1 className="text-2xl font-bold mb-3 text-foreground">
-                      {children}
-                    </h1>
-                  ),
-                  h2: ({ children }) => (
-                    <h2 className="text-xl font-semibold mb-2 text-foreground">
-                      {children}
-                    </h2>
-                  ),
-                  h3: ({ children }) => (
-                    <h3 className="text-lg font-medium mb-2 text-foreground">
-                      {children}
-                    </h3>
-                  ),
-                  p: ({ children }) => (
-                    <p className="mb-3 text-muted-foreground leading-relaxed">
-                      {children}
-                    </p>
-                  ),
-                  ul: ({ children }) => (
-                    <ul className="mb-3 ml-4 list-disc text-muted-foreground">
-                      {children}
-                    </ul>
-                  ),
-                  ol: ({ children }) => (
-                    <ol className="mb-3 ml-4 list-decimal text-muted-foreground">
-                      {children}
-                    </ol>
-                  ),
-                  li: ({ children }) => <li className="mb-1">{children}</li>,
-                  blockquote: ({ children }) => (
-                    <blockquote className="border-l-4 border-border pl-3 italic text-muted-foreground mb-3">
-                      {children}
-                    </blockquote>
-                  ),
-                  code: ({ children }) => (
-                    <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono">
-                      {children}
-                    </code>
-                  ),
-                  pre: ({ children }) => (
-                    <pre className="bg-muted p-3 rounded-lg overflow-x-auto mb-3 text-sm">
-                      {children}
-                    </pre>
-                  ),
-                }}
-              >
-                {artifact.content || '*Start writing...*'}
-              </ReactMarkdown>
-            </div>
-          ) : (
-            // Edit Mode - Textarea
-            <Textarea
-              ref={textareaRef}
-              value={artifact.content}
-              onChange={(e) => handleContentChange(e.target.value)}
-              disabled={isStreaming}
-              className={`w-full min-h-[400px] border-none resize-none text-sm leading-relaxed bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 custom-scrollbar ${
-                isStreaming ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
-              placeholder="Start writing..."
-              style={{
-                height: '100%',
-                minHeight: '400px',
-                maxHeight: 'calc(100vh)',
-              }}
-            />
-          )}
-        </div>
+      <div className="flex-1 min-h-0 flex flex-col h-full">
+        <Editor
+          content={artifact.content || ''}
+          isCurrentVersion={true}
+          currentVersionIndex={0}
+          status={artifact.status}
+          onSaveContent={(content) => {
+            setArtifact((current) => ({
+              ...current,
+              content,
+            }));
+          }}
+          suggestions={[]}
+          isInline={true}
+        />
       </div>
 
 

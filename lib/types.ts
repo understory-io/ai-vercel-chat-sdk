@@ -58,4 +58,7 @@ export interface Attachment {
   notionId?: string;
   notionPath?: string;
   lastModified?: string;
+  content?: string;
+  contentStatus?: 'pending' | 'loading' | 'loaded' | 'error';
+  contentError?: string;
 }
