@@ -1,16 +1,35 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useArtifact } from '@/hooks/use-artifact';
-import { Save, Loader2, X, Copy } from 'lucide-react';
+import { Loader2, X, Copy } from 'lucide-react';
 import { Editor } from '@/components/text-editor';
 import { toast } from 'sonner';
+import useSWR, { useSWRConfig } from 'swr';
+import type { Document } from '@/lib/db/schema';
+import { fetcher } from '@/lib/utils';
+import { useRef } from 'react';
 
 const ARTIFACT_SIDEBAR_WIDTH = '50%';
 
 export function ArtifactSidebar() {
   const { artifact, setArtifact } = useArtifact();
+  const { mutate } = useSWRConfig();
+
+  const { data: documents } = useSWR<Array<Document>>(
+    artifact?.documentId && artifact.documentId !== 'init'
+      ? `/api/document?id=${artifact.documentId}`
+      : null,
+    fetcher,
+  );
+
+  const latestDocument = useMemo(
+    () => (documents && documents.length > 0 ? documents.at(-1)! : null),
+    [documents],
+  );
+
+  const [isContentDirty, setIsContentDirty] = useState(false);
 
   const handleTitleChange = (newTitle: string) => {
     if (artifact?.status === 'streaming') return; // Prevent editing while AI is streaming
@@ -19,9 +38,93 @@ export function ArtifactSidebar() {
       ...current,
       title: newTitle,
     }));
+
+    // Debounced save for title-only changes as well
+    scheduleSave(artifact.content, newTitle);
   };
 
+  const handleContentChange = useCallback(
+    async (updatedContent: string, updatedTitle?: string) => {
+      if (!artifact?.documentId) return;
+
+      setIsContentDirty(true);
+
+      await mutate(
+        `/api/document?id=${artifact.documentId}`,
+        async (currentDocuments?: Array<Document>) => {
+          if (!currentDocuments || currentDocuments.length === 0) return currentDocuments;
+
+          const currentDocument = currentDocuments.at(-1)!;
+          const incomingTitle = updatedTitle ?? artifact.title;
+
+          const contentChanged = (currentDocument.content ?? '') !== updatedContent;
+          const titleChanged = (currentDocument.title ?? '') !== incomingTitle;
+
+          if (!contentChanged && !titleChanged) {
+            setIsContentDirty(false);
+            return currentDocuments;
+          }
+
+          await fetch(`/api/document?id=${artifact.documentId}`, {
+            method: 'POST',
+            body: JSON.stringify({
+              title: incomingTitle,
+              content: updatedContent,
+              kind: artifact.kind,
+            }),
+          });
+
+          setIsContentDirty(false);
+
+          const newDocument: Document = {
+            ...currentDocument,
+            title: incomingTitle,
+            content: updatedContent,
+            createdAt: new Date(),
+          } as Document;
+
+          return [...currentDocuments, newDocument];
+        },
+        { revalidate: false },
+      );
+    },
+    [artifact, mutate],
+  );
+
+  // Stable debounced scheduler to avoid saving on every keystroke
+  const saveTimerRef = useRef<number | null>(null);
+  const scheduleSave = useCallback(
+    (content: string, title?: string) => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+
+      setIsContentDirty(true);
+
+      saveTimerRef.current = window.setTimeout(() => {
+        handleContentChange(content, title);
+      }, 1500);
+    },
+    [handleContentChange],
+  );
+
+  // Clear pending save on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleClose = () => {
+    // Flush pending changes before closing
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      void handleContentChange(artifact.content, artifact.title);
+    }
+
     setArtifact((current) => ({
       ...current,
       isVisible: false,
@@ -76,17 +179,7 @@ export function ArtifactSidebar() {
           }`}
           placeholder="Artifact title..."
         />
-
         <div className="flex items-center gap-2">
-          {/* Save Status */}
-          <div className="flex items-center gap-1">
-            {isStreaming ? (
-              <Loader2 className="size-4 animate-spin text-blue-500" />
-            ) : (
-              <Save className="size-4 text-green-500" />
-            )}
-          </div>
-
           {/* Copy Button */}
           <Button
             variant="ghost"
@@ -129,15 +222,21 @@ export function ArtifactSidebar() {
         style={{ WebkitOverflowScrolling: 'touch' as any }}
       >
         <Editor
-          content={artifact.content || ''}
+          content={artifact.content || latestDocument?.content || ''}
           isCurrentVersion={true}
           currentVersionIndex={0}
           status={artifact.status}
-          onSaveContent={(content) => {
+          onSaveContent={(content, debounce) => {
             setArtifact((current) => ({
               ...current,
               content,
             }));
+
+            if (debounce) {
+              scheduleSave(content);
+            } else {
+              handleContentChange(content);
+            }
           }}
           suggestions={[]}
           isInline={true}
