@@ -164,3 +164,29 @@
 .dark .notion-editor .ProseMirror > *:hover {
   background-color: rgba(255, 255, 255, 0.03);
 }
+
+/* Scrollbar styling for the ProseMirror editor when used in the sidebar */
+.notion-editor .ProseMirror::-webkit-scrollbar {
+  width: 6px;
+}
+
+.notion-editor .ProseMirror::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notion-editor .ProseMirror::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+}
+
+.notion-editor .ProseMirror::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.dark .notion-editor .ProseMirror::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.dark .notion-editor .ProseMirror::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}

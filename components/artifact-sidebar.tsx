@@ -61,7 +61,7 @@ export function ArtifactSidebar() {
 
   return (
     <div
-      className="h-full bg-background border-l border-border flex flex-col transition-all duration-200 ease-out overscroll-contain animate-in slide-in-from-right-full"
+      className="h-full min-h-0 bg-background border-l border-border flex flex-col transition-all duration-200 ease-out overscroll-contain animate-in slide-in-from-right-full"
       style={{ width: ARTIFACT_SIDEBAR_WIDTH }}
     >
       {/* Header */}
@@ -123,7 +123,11 @@ export function ArtifactSidebar() {
       )}
 
       {/* Content Area */}
-      <div className="flex-1 min-h-0 flex flex-col h-full">
+      <div
+        className="flex-1 min-h-0 flex flex-col h-full overflow-y-auto custom-scrollbar"
+        data-testid="artifact-scroll-container"
+        style={{ WebkitOverflowScrolling: 'touch' as any }}
+      >
         <Editor
           content={artifact.content || ''}
           isCurrentVersion={true}

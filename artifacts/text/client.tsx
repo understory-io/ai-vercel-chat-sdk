@@ -69,7 +69,7 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
     return (
       <>
         <div className={`flex flex-col h-full ${isInline ? 'p-4' : 'p-8'}`}>
-          <div className="flex flex-col flex-1 w-full max-w-none overflow-hidden">
+          <div className="flex flex-col flex-1 w-full max-w-none min-h-0">
             <Editor
               content={content}
               suggestions={metadata ? metadata.suggestions : []}

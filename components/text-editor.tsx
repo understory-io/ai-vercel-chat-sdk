@@ -150,10 +150,10 @@ function PureEditor({
   }, [suggestions, content]);
 
   return (
-    <div 
+    <div
       className={`
-        relative notion-editor custom-scrollbar
-        max-w-none w-full flex flex-col flex-1
+        relative notion-editor
+        max-w-none w-full
         prose prose-lg dark:prose-invert
         prose-headings:font-semibold prose-headings:tracking-tight
         prose-h1:text-3xl prose-h1:mt-8 prose-h1:mb-4
@@ -176,11 +176,12 @@ function PureEditor({
         [&_.ProseMirror_p:empty:before]:pointer-events-none
         [&_.ProseMirror_p:empty:before]:absolute
         [&_.ProseMirror]:font-normal
-      `} 
-      ref={containerRef} 
+      `}
+      ref={containerRef}
       style={{
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        minHeight: '300px'
+        fontFamily:
+          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        minHeight: '300px',
       }}
     />
   );

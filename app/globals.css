@@ -126,10 +126,12 @@
 .ProseMirror {
     outline: none;
     flex: 1;
-    overflow-y: auto;
+    /* Let the surrounding pane handle vertical scrolling */
+    overflow-y: visible;
     overflow-anchor: none;
     padding: 1rem;
     min-height: 0;
+    white-space: pre-wrap; /* per prosemirror-view recommendation */
 }
 
 .cm-editor,
