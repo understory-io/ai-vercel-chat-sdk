@@ -22,19 +22,13 @@ import { useSidebar } from './ui/sidebar';
 import { useArtifact } from '@/hooks/use-artifact';
 import { imageArtifact } from '@/artifacts/image/client';
 import { codeArtifact } from '@/artifacts/code/client';
-import { sheetArtifact } from '@/artifacts/sheet/client';
 import { textArtifact } from '@/artifacts/text/client';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import type { VisibilityType } from './visibility-selector';
 import type { Attachment, ChatMessage } from '@/lib/types';
 
-export const artifactDefinitions = [
-  textArtifact,
-  codeArtifact,
-  imageArtifact,
-  sheetArtifact,
-];
+export const artifactDefinitions = [textArtifact, codeArtifact, imageArtifact];
 export type ArtifactKind = (typeof artifactDefinitions)[number]['kind'];
 
 export interface UIArtifact {
@@ -257,7 +251,7 @@ function PureArtifact({
         globalThis.document.body.style.overflow = '';
       }
     }
-    
+
     // Cleanup on unmount
     return () => {
       if (typeof globalThis !== 'undefined' && globalThis.document?.body) {
@@ -401,7 +395,10 @@ function PureArtifact({
               />
             </div>
 
-            <div className="dark:bg-muted bg-background !max-w-full flex flex-col" style={{height: 'calc(100vh - 4rem)', width: '100%'}}>
+            <div
+              className="dark:bg-muted bg-background !max-w-full flex flex-col"
+              style={{ height: 'calc(100vh - 4rem)', width: '100%' }}
+            >
               <artifactDefinition.content
                 title={artifact.title}
                 content={

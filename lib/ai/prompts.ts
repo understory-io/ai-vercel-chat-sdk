@@ -92,9 +92,6 @@ def factorial(n):
 print(f"Factorial of 5 is: {factorial(5)}")
 `;
 
-export const sheetPrompt = `
-You are a spreadsheet creation assistant. Create a spreadsheet in csv format based on the given prompt. The spreadsheet should contain meaningful column headers and data.
-`;
 
 export const updateDocumentPrompt = (
   currentContent: string | null,
@@ -109,12 +106,6 @@ ${currentContent}
     : type === 'code'
       ? `\
 Improve the following code snippet based on the given prompt.
-
-${currentContent}
-`
-      : type === 'sheet'
-        ? `\
-Improve the following spreadsheet based on the given prompt.
 
 ${currentContent}
 `
