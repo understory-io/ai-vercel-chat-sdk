@@ -42,6 +42,8 @@ export type CustomUIDataTypes = {
   kind: ArtifactKind;
   clear: null;
   finish: null;
+  updated: null;
+  content: string;
 };
 
 export type ChatMessage = UIMessage<

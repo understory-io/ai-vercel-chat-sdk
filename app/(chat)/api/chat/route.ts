@@ -21,6 +21,7 @@ import { convertToUIMessages, generateUUID } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
 import { createDocument } from '@/lib/ai/tools/create-document';
 import { updateDocument } from '@/lib/ai/tools/update-document';
+import { getDocument } from '@/lib/ai/tools/get-document';
 import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
 import { getMCPTools } from '@/lib/ai/tools/mcp-dynamic-tools';
@@ -300,6 +301,7 @@ export async function POST(request: Request) {
         // Combine static tools with dynamic MCP tools
         const allTools = {
           getWeather,
+          getDocument: getDocument(),
           createDocument: createDocument({ session, dataStream }),
           updateDocument: updateDocument({ session, dataStream }),
           requestSuggestions: requestSuggestions({
@@ -312,6 +314,7 @@ export async function POST(request: Request) {
         // Combine active tools lists
         const staticActiveTools = [
           'getWeather',
+          'getDocument',
           'createDocument',
           'updateDocument',
           'requestSuggestions',

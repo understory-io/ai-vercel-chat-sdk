@@ -21,6 +21,7 @@ export interface CreateDocumentCallbackProps {
   title: string;
   dataStream: UIMessageStreamWriter<ChatMessage>;
   session: Session;
+  content?: string; // Optional pre-generated content from main model
 }
 
 export interface UpdateDocumentCallbackProps {
@@ -28,6 +29,7 @@ export interface UpdateDocumentCallbackProps {
   description: string;
   dataStream: UIMessageStreamWriter<ChatMessage>;
   session: Session;
+  content?: string; // Optional new content for simplified workflow
 }
 
 export interface DocumentHandler<T = ArtifactKind> {
@@ -49,6 +51,7 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
         title: args.title,
         dataStream: args.dataStream,
         session: args.session,
+        content: args.content, // Pass through content parameter
       });
 
       if (args.session?.user?.id) {

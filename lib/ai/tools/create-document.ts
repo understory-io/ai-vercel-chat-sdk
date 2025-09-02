@@ -20,10 +20,12 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
     inputSchema: z.object({
       title: z.string(),
       kind: z.enum(artifactKinds),
+      content: z.string().describe('The complete content to display in the artifact'),
     }),
-    execute: async ({ title, kind }) => {
+    execute: async ({ title, kind, content }) => {
       const id = generateUUID();
 
+      // Send artifact metadata and content to UI
       dataStream.write({
         type: 'data-kind',
         data: kind,
@@ -42,9 +44,10 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
         transient: true,
       });
 
+      // Set content directly without any streaming simulation
       dataStream.write({
-        type: 'data-clear',
-        data: null,
+        type: 'data-content',
+        data: content,
         transient: true,
       });
 
@@ -57,20 +60,22 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
         throw new Error(`No document handler found for kind: ${kind}`);
       }
 
+      // Pass the content to the handler for saving
       await documentHandler.onCreateDocument({
         id,
         title,
         dataStream,
         session,
+        content,
       });
 
-      dataStream.write({ type: 'data-finish', data: null, transient: true });
+      // No need for data-finish event - artifact should be immediately ready
 
       return {
         id,
         title,
         kind,
-        content: 'A document was created and is now visible to the user.',
+        content: 'Document created successfully.',
       };
     },
   });

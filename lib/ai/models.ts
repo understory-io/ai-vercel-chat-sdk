@@ -6,6 +6,7 @@ export interface ChatModel {
   description: string;
 }
 
+// All models kept for easy future deployment - only GPT-4.1 exposed via entitlements
 export const chatModels: Array<ChatModel> = [
   {
     id: 'claude-sonnet-model',

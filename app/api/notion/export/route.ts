@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     if (!databaseId) {
       const envDb = process.env.NOTION_STORING_DATABASE_ID;
       console.log('Environment NOTION_STORING_DATABASE_ID:', envDb);
-      if (envDb && envDb.trim()) {
+      if (envDb?.trim()) {
         databaseId = envDb.trim();
         console.log('Using database ID from environment:', databaseId);
       } else {

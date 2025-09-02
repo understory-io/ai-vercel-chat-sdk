@@ -12,14 +12,13 @@ interface UpdateDocumentProps {
 
 export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
   tool({
-    description: 'Update a document with the given description.',
+    description: 'Update a document with new content.',
     inputSchema: z.object({
       id: z.string().describe('The ID of the document to update'),
-      description: z
-        .string()
-        .describe('The description of changes that need to be made'),
+      content: z.string().describe('The complete new content for the document'),
+      title: z.string().optional().describe('Optional new title for the document'),
     }),
-    execute: async ({ id, description }) => {
+    execute: async ({ id, content, title }) => {
       const document = await getDocumentById({ id });
 
       if (!document) {
@@ -28,9 +27,19 @@ export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
         };
       }
 
+      // Update title if provided
+      if (title) {
+        dataStream.write({
+          type: 'data-title',
+          data: title,
+          transient: true,
+        });
+      }
+
+      // Set content directly without any streaming simulation
       dataStream.write({
-        type: 'data-clear',
-        data: null,
+        type: 'data-content',
+        data: content,
         transient: true,
       });
 
@@ -43,20 +52,29 @@ export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
         throw new Error(`No document handler found for kind: ${document.kind}`);
       }
 
+      // Create updated document with new content
+      const updatedDocument = {
+        ...document,
+        content,
+        title: title || document.title,
+      };
+
       await documentHandler.onUpdateDocument({
-        document,
-        description,
+        document: updatedDocument,
+        description: 'Document updated with new content',
         dataStream,
         session,
+        content,
       });
 
-      dataStream.write({ type: 'data-finish', data: null, transient: true });
+      // Send updated notification
+      dataStream.write({ type: 'data-updated', data: null, transient: true });
 
       return {
         id,
-        title: document.title,
+        title: title || document.title,
         kind: document.kind,
-        content: 'The document has been updated successfully.',
+        content: 'Document updated successfully.',
       };
     },
   });

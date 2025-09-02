@@ -57,6 +57,13 @@ export function DataStreamHandler() {
               status: 'streaming',
             };
 
+          case 'data-content':
+            return {
+              ...draftArtifact,
+              content: delta.data,
+              status: 'idle',
+            };
+
           case 'data-clear':
             return {
               ...draftArtifact,
@@ -68,6 +75,12 @@ export function DataStreamHandler() {
             return {
               ...draftArtifact,
               status: 'idle',
+            };
+
+          case 'data-updated':
+            return {
+              ...draftArtifact,
+              status: 'updated',
             };
 
           default:

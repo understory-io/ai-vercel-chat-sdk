@@ -388,7 +388,7 @@ export const ThinkingMessage = () => {
                 ease: "easeInOut"
               }}
             >
-              AI is thinking...
+              AI is responding...
             </motion.div>
             <div className="flex space-x-1">
               {[0, 1, 2].map((i) => (

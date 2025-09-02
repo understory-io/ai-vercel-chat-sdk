@@ -26,11 +26,25 @@ export function ArtifactSidebar() {
   );
 
   const latestDocument = useMemo(
-    () => (documents && documents.length > 0 ? documents.at(-1)! : null),
+    () => (documents && documents.length > 0 ? documents[documents.length - 1] : null),
     [documents],
   );
 
   const [isContentDirty, setIsContentDirty] = useState(false);
+
+  // Auto-clear updated status after 3 seconds
+  useEffect(() => {
+    if (artifact.status === 'updated') {
+      const timer = setTimeout(() => {
+        setArtifact((current) => ({
+          ...current,
+          status: 'idle',
+        }));
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [artifact.status, setArtifact]);
 
   const handleTitleChange = (newTitle: string) => {
     if (artifact?.status === 'streaming') return; // Prevent editing while AI is streaming
@@ -55,7 +69,7 @@ export function ArtifactSidebar() {
         async (currentDocuments?: Array<Document>) => {
           if (!currentDocuments || currentDocuments.length === 0) return currentDocuments;
 
-          const currentDocument = currentDocuments.at(-1)!;
+          const currentDocument = currentDocuments[currentDocuments.length - 1];
           const incomingTitle = updatedTitle ?? artifact.title;
 
           const contentChanged = (currentDocument.content ?? '') !== updatedContent;
@@ -162,6 +176,7 @@ export function ArtifactSidebar() {
   }
 
   const isStreaming = artifact.status === 'streaming';
+  const isUpdated = artifact.status === 'updated';
 
   return (
     <div
@@ -215,11 +230,17 @@ export function ArtifactSidebar() {
         </div>
       </div>
 
-      {/* Streaming Status Banner */}
+      {/* Status Banners */}
       {isStreaming && (
         <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 text-blue-800 text-sm flex items-center gap-2">
           <Loader2 className="size-4 animate-spin" />
           AI is generating content... (editing disabled)
+        </div>
+      )}
+      
+      {isUpdated && (
+        <div className="px-4 py-2 bg-green-50 border-b border-green-200 text-green-800 text-sm flex items-center gap-2">
+          ✓ Updated
         </div>
       )}
 
