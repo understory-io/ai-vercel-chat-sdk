@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: ExportRequest = await request.json();
-    const { title, content, parentPageId, databaseId } = body;
+    let { title, content, parentPageId, databaseId } = body;
 
     if (!title || !content) {
       return NextResponse.json(
@@ -31,6 +31,18 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    // Default to dedicated storing database if not provided
+    if (!databaseId) {
+      const envDb = process.env.NOTION_STORING_DATABASE_ID;
+      console.log('Environment NOTION_STORING_DATABASE_ID:', envDb);
+      if (envDb && envDb.trim()) {
+        databaseId = envDb.trim();
+        console.log('Using database ID from environment:', databaseId);
+      } else {
+        console.log('No NOTION_STORING_DATABASE_ID found in environment');
+      }
     }
 
     // Export to Notion

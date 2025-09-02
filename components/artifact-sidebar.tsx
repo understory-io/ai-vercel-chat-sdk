@@ -10,6 +10,7 @@ import useSWR, { useSWRConfig } from 'swr';
 import type { Document } from '@/lib/db/schema';
 import { fetcher } from '@/lib/utils';
 import { useRef } from 'react';
+import { NotionIcon } from '@/components/notion-slack-icons';
 
 const ARTIFACT_SIDEBAR_WIDTH = '50%';
 
@@ -195,6 +196,13 @@ export function ArtifactSidebar() {
             <Copy className="size-4" />
           </Button>
 
+          {/* Export to Notion */}
+          <PublishToNotionButton
+            disabled={isStreaming || !artifact.content?.trim()}
+            titleText={artifact.title}
+            contentText={artifact.content}
+          />
+
           {/* Close Button */}
           <Button
             variant="ghost"
@@ -245,5 +253,70 @@ export function ArtifactSidebar() {
 
 
     </div>
+  );
+}
+
+function PublishToNotionButton({
+  disabled,
+  titleText,
+  contentText,
+}: {
+  disabled?: boolean;
+  titleText: string;
+  contentText: string;
+}) {
+  const [publishing, setPublishing] = useState(false);
+
+  const handlePublish = useCallback(async () => {
+    try {
+      setPublishing(true);
+      // Prefer explicit title; fallback to first non-empty line
+      const lines = (titleText || '').trim()
+        ? [titleText]
+        : (contentText || '').split('\n').filter((l) => l.trim());
+      const title = (lines[0] || 'Untitled').replace(/^#+\s*/, '').slice(0, 200);
+
+      const response = await fetch('/api/notion/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          content: contentText || '',
+          // Do not pass databaseId from client; server uses NOTION_STORING_DATABASE_ID
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result?.success) {
+        throw new Error(result?.error || 'Failed to export to Notion');
+      }
+
+      toast.success('Published to Notion');
+      if (result.url) window.open(result.url, '_blank');
+    } catch (err) {
+      console.error('Publish to Notion error:', err);
+      toast.error(err instanceof Error ? err.message : 'Notion publish failed');
+    } finally {
+      setPublishing(false);
+    }
+  }, [titleText, contentText]);
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      title="Publish to Notion"
+      className="size-8 p-0"
+      onClick={handlePublish}
+      disabled={disabled || publishing}
+    >
+      {publishing ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <span className="text-black dark:text-white">
+          <NotionIcon size={16} />
+        </span>
+      )}
+    </Button>
   );
 }

@@ -40,22 +40,26 @@ export class NotionExporter {
     databaseId,
   }: NotionExportOptions): Promise<NotionExportResult> {
     try {
+      console.log('NotionExporter received:', { title, databaseId, parentPageId });
+      
       // Convert markdown content to Notion blocks using martian
       const blocks = markdownToBlocks(content);
-      
+
       // Prepare page properties
       const pageProps: any = {
         parent: databaseId 
           ? { database_id: databaseId }
           : parentPageId 
           ? { page_id: parentPageId }
-          : { type: 'workspace' },
+          : { workspace: true },
         properties: {},
-        children: blocks,
       };
 
       // If creating in database, add title as property
       if (databaseId) {
+        // Get current date in ISO format for Notion
+        const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+        
         pageProps.properties = {
           Name: {
             title: [
@@ -65,6 +69,11 @@ export class NotionExporter {
                 },
               },
             ],
+          },
+          Dato: {
+            date: {
+              start: currentDate,
+            },
           },
         };
       } else {
@@ -80,8 +89,24 @@ export class NotionExporter {
         };
       }
 
-      // Create the page
-      const response = await this.client.pages.create(pageProps);
+      // Create page with up to 100 initial children (API limit)
+      const initialChildren = blocks.slice(0, 100);
+      const response = await this.client.pages.create({
+        ...pageProps,
+        children: initialChildren,
+      });
+      
+      // Append the rest of the content in batches of 100
+      const remaining = blocks.slice(100);
+      if (remaining.length > 0) {
+        for (let i = 0; i < remaining.length; i += 100) {
+          const chunk = remaining.slice(i, i + 100);
+          await this.client.blocks.children.append({
+            block_id: response.id,
+            children: chunk,
+          });
+        }
+      }
       
       // Get the page URL
       const pageUrl = `https://notion.so/${response.id.replace(/-/g, '')}`;
