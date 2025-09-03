@@ -1,6 +1,6 @@
 'use client';
 
-import { MarkdownParser, defaultMarkdownSerializer } from 'prosemirror-markdown';
+import { type MarkdownParser, defaultMarkdownSerializer, defaultMarkdownParser } from 'prosemirror-markdown';
 import { DOMParser, type Node } from 'prosemirror-model';
 import { Decoration, DecorationSet, type EditorView } from 'prosemirror-view';
 import { renderToString } from 'react-dom/server';
@@ -14,31 +14,8 @@ let markdownParser: MarkdownParser | null = null;
 
 const getMarkdownParser = () => {
   if (!markdownParser) {
-    // Import documentSchema here to avoid circular dependency
-    const { documentSchema } = require('./config');
-    
-    // Use a simplified markdown parser configuration that works with the schema
-    markdownParser = new MarkdownParser(documentSchema, {
-      blockquote: { block: 'blockquote' },
-      paragraph: { block: 'paragraph' },
-      list_item: { block: 'list_item' },
-      bullet_list: { block: 'bullet_list' },
-      ordered_list: { block: 'ordered_list' },
-      heading: {
-        block: 'heading',
-        getAttrs: (tok: any) => ({ level: Math.min(6, Math.max(1, +(tok.tag?.slice(1) || 1))) }),
-      },
-      code_block: { block: 'code_block' },
-      fence: { 
-        block: 'code_block', 
-        getAttrs: (tok: any) => ({ params: tok.info || '' }),
-      },
-      hr: { node: 'horizontal_rule' },
-      hardbreak: { node: 'hard_break' },
-      em: { mark: 'em' },
-      strong: { mark: 'strong' },
-      code_inline: { mark: 'code' },
-    } as any);
+    // Use the default markdown parser - works well for standard markdown and Notion export
+    markdownParser = defaultMarkdownParser;
   }
   return markdownParser;
 };
