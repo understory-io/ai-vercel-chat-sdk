@@ -84,9 +84,13 @@ const PurePreviewMessage = ({
             {attachmentsFromMessage.length > 0 && (
               <div
                 data-testid={`message-attachments`}
-                className={cn("flex flex-row gap-2", {
-                  'justify-end': message.role === 'user',
-                  'justify-start': message.role === 'assistant'
+                className={cn("grid gap-2 max-w-2xl", {
+                  'justify-self-end ml-auto': message.role === 'user',
+                  'justify-self-start': message.role === 'assistant',
+                  'grid-cols-1': attachmentsFromMessage.length === 1,
+                  'grid-cols-2': attachmentsFromMessage.length === 2,
+                  'grid-cols-3': attachmentsFromMessage.length >= 3 && attachmentsFromMessage.length <= 6,
+                  'grid-cols-3 sm:grid-cols-4 lg:grid-cols-6': attachmentsFromMessage.length > 6
                 })}
               >
                 {attachmentsFromMessage.map((attachment) => (
