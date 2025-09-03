@@ -20,7 +20,6 @@ import { CodeEditor } from './code-editor';
 
 import { useArtifact } from '@/hooks/use-artifact';
 import equal from 'fast-deep-equal';
-import { SpreadsheetEditor } from './sheet-editor';
 import { ImageEditor } from './image-editor';
 
 interface DocumentPreviewProps {
@@ -206,7 +205,7 @@ const PureDocumentHeader = ({
   isStreaming,
 }: {
   title: string;
-  kind: ArtifactKind | 'sheet';
+  kind: ArtifactKind;
   isStreaming: boolean;
 }) => (
   <div className="p-4 border rounded-t-2xl flex flex-row gap-2 items-start sm:items-center justify-between dark:bg-muted border-b-0 dark:border-zinc-700">
@@ -265,12 +264,6 @@ const DocumentContent = ({ document }: { document: Document }) => {
         <div className="flex flex-1 relative w-full">
           <div className="absolute inset-0">
             <CodeEditor {...commonProps} onSaveContent={() => {}} />
-          </div>
-        </div>
-      ) : document.kind === 'sheet' ? (
-        <div className="flex flex-1 relative size-full p-4">
-          <div className="absolute inset-0">
-            <SpreadsheetEditor {...commonProps} />
           </div>
         </div>
       ) : document.kind === 'image' ? (

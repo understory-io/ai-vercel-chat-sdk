@@ -238,7 +238,10 @@ const PurePreviewMessage = ({
                     <div key={toolCallId}>
                       <DocumentToolCall
                         type="update"
-                        args={input}
+                        args={{
+                          id: input.id,
+                          description: input.content || input.title || ''
+                        }}
                         isReadonly={isReadonly}
                       />
                     </div>
