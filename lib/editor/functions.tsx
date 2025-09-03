@@ -38,11 +38,7 @@ const getMarkdownParser = () => {
       em: { mark: 'em' },
       strong: { mark: 'strong' },
       code_inline: { mark: 'code' },
-    } as any, {
-      em: '_',
-      strong: '__',
-      code_inline: '`',
-    });
+    } as any);
   }
   return markdownParser;
 };
