@@ -93,7 +93,7 @@ export class NotionExporter {
       const initialChildren = blocks.slice(0, 100);
       const response = await this.client.pages.create({
         ...pageProps,
-        children: initialChildren,
+        children: initialChildren as any,
       });
       
       // Append the rest of the content in batches of 100
@@ -103,7 +103,7 @@ export class NotionExporter {
           const chunk = remaining.slice(i, i + 100);
           await this.client.blocks.children.append({
             block_id: response.id,
-            children: chunk,
+            children: chunk as any,
           });
         }
       }
