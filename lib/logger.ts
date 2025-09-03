@@ -71,7 +71,6 @@ export const createLogger = (
 };
 
 // Pre-configured child loggers for common components
-export const mcpLogger = createLogger('mcp');
 export const dbLogger = createLogger('database');
 export const aiLogger = createLogger('ai-sdk');
 export const apiLogger = createLogger('api');

@@ -24,7 +24,6 @@ import { updateDocument } from '@/lib/ai/tools/update-document';
 import { getDocument } from '@/lib/ai/tools/get-document';
 import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
-import { getMCPTools } from '@/lib/ai/tools/mcp-dynamic-tools';
 import { isProductionEnvironment } from '@/lib/constants';
 import { myProvider } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
@@ -248,57 +247,7 @@ export async function POST(request: Request) {
 
     const stream = createUIMessageStream({
       execute: async ({ writer: dataStream }) => {
-        // Dynamically load MCP tools with performance tracking
-        let mcpTools: any[] = [];
-        const mcpToolsObject: Record<string, any> = {};
-        const mcpActiveTools: string[] = [];
-
-        const mcpLogger = createCorrelatedLogger(
-          requestContext,
-          'mcp',
-          'tools_loading',
-        );
-
-        try {
-          mcpLogger.info(
-            {
-              event: 'mcp_tools_loading_start',
-            },
-            'Starting MCP tools loading',
-          );
-
-          mcpTools = await getMCPTools({ session, dataStream, requestContext });
-
-          // Convert MCP tools to the format expected by AI SDK using actual tool names
-          mcpTools.forEach((toolObj) => {
-            const toolName = toolObj.name; // Use actual MCP tool name
-            mcpToolsObject[toolName] = toolObj.tool;
-            mcpActiveTools.push(toolName);
-          });
-
-          mcpLogger.info(
-            {
-              event: 'mcp_tools_loaded',
-              toolCount: mcpTools.length,
-              toolNames: mcpActiveTools,
-            },
-            `Loaded ${mcpTools.length} MCP tools for chat: ${mcpActiveTools.join(', ')}`,
-          );
-        } catch (error) {
-          mcpLogger.error(
-            {
-              event: 'mcp_tools_loading_error',
-              error: {
-                message:
-                  error instanceof Error ? error.message : 'Unknown error',
-                stack: error instanceof Error ? error.stack : undefined,
-              },
-            },
-            `Failed to load MCP tools: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          );
-        }
-
-        // Combine static tools with dynamic MCP tools
+        // Static tools only
         const allTools = {
           getWeather,
           getDocument: getDocument(),
@@ -308,20 +257,14 @@ export async function POST(request: Request) {
             session,
             dataStream,
           }),
-          ...mcpToolsObject,
         };
 
-        // Combine active tools lists
-        const staticActiveTools = [
+        const allActiveTools = [
           'getWeather',
           'getDocument',
           'createDocument',
           'updateDocument',
           'requestSuggestions',
-        ];
-        const allActiveTools: string[] = [
-          ...staticActiveTools,
-          ...mcpActiveTools,
         ];
 
         const streamLogger = createCorrelatedLogger(

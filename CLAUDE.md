@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **product documentation creation tool** built on top of the Vercel AI Chatbot template. The goal is to help CS teams create high-quality product documentation efficiently by combining AI assistance with collaborative artifact editing. The system integrates with external sources (Notion, Slack) via MCP (Model Context Protocol) servers for context-rich documentation generation.
+This is a **product documentation creation tool** built on top of the Vercel AI Chatbot template. The goal is to help CS teams create high-quality product documentation efficiently by combining AI assistance with collaborative artifact editing. The system integrates with external sources (Notion) for context-rich documentation generation.
 
 **Key Transformation**: This started as a generic AI chatbot but is being specialized for product documentation workflows, particularly for feeding AI support agents like Intercom's Fin.
 
@@ -37,7 +37,7 @@ pnpm test                  # Run Playwright E2E tests
 ### Core Data Flow
 1. **Chat Interface** → **AI Tools** → **Artifacts** → **Database/External Services**
 2. User interacts via multimodal chat (text + file uploads)
-3. AI uses tools to pull context (MCP), create/update documents, and manage suggestions
+3. AI uses tools to create/update documents, and manage suggestions
 4. Documents render as collaborative artifacts alongside chat
 5. Final documents can be published back to external systems (Notion)
 
@@ -56,7 +56,6 @@ pnpm test                  # Run Playwright E2E tests
 - **Current Tools**: create-document, update-document, request-suggestions, get-weather
 - **Integration Point**: Added to chat API in `app/(chat)/api/chat/route.ts`
 - **Tool Pattern**: Each tool exports a function that returns AI SDK tool definition
-- **MCP Integration**: New MCP-based tools connect to external n8n workflows
 
 #### **Database Layer** (`/lib/db/`)
 - **ORM**: Drizzle with PostgreSQL (Neon)
@@ -85,10 +84,6 @@ pnpm test                  # Run Playwright E2E tests
 - **Issue**: In-chat previews can get stuck in streaming state if `data-finish` not received
 - **Fix**: Preview components check `artifact.isVisible` to determine streaming state
 
-#### **MCP Integration Pattern** (In Development)
-- **Connection**: WebSocket transport to n8n MCP server at `wss://understory-io.app.n8n.cloud/mcp/productDocumentationMCP`
-- **Dynamic Tool Discovery**: Client discovers available tools from MCP server automatically
-- **No Code Changes**: Adding tools to n8n server makes them available in chat without code updates
 
 ## Environment Configuration
 
@@ -112,7 +107,6 @@ pnpm test                  # Run Playwright E2E tests
 1. Create tool in `/lib/ai/tools/[tool-name].ts`
 2. Export tool function that returns AI SDK tool definition
 3. Import and add to tools array in `/app/(chat)/api/chat/route.ts`
-4. For MCP tools: ensure n8n server exposes the tool endpoint
 
 ### Artifact Development
 - Client components in `/artifacts/[type]/client.tsx` handle rendering and interactions
@@ -122,5 +116,4 @@ pnpm test                  # Run Playwright E2E tests
 ### Common Debugging
 - Check browser console for artifact state issues
 - Use `console.log` in `saveDocument` for database debugging  
-- Verify MCP connections via WebSocket network tab
 - Use Drizzle Studio (`pnpm db:studio`) for database inspection
