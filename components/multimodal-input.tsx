@@ -108,6 +108,7 @@ function PureMultimodalInput({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const submitForm = useCallback(() => {
     window.history.replaceState({}, '', `/chat/${chatId}`);
@@ -290,6 +291,54 @@ function PureMultimodalInput({
     };
   }, [setAttachments]);
 
+  // Handle drag and drop events
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === e.target) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length === 0) return;
+
+    setUploadQueue(files.map((file) => file.name));
+
+    try {
+      const uploadPromises = files.map((file) => uploadFile(file));
+      const uploadedAttachments = await Promise.all(uploadPromises);
+      const successfullyUploadedAttachments = uploadedAttachments.filter(
+        (attachment) => attachment !== undefined,
+      );
+
+      setAttachments((currentAttachments) => [
+        ...currentAttachments,
+        ...successfullyUploadedAttachments,
+      ]);
+    } catch (error) {
+      console.error('Error uploading dropped files!', error);
+    } finally {
+      setUploadQueue([]);
+    }
+  }, [setAttachments]);
+
   return (
     <div className="relative w-full flex flex-col gap-4">
       <AnimatePresence>
@@ -327,10 +376,21 @@ function PureMultimodalInput({
         tabIndex={-1}
       />
 
-      <div className={cx(
-        'relative rounded-2xl bg-muted border border-border dark:border-zinc-700 transition-all duration-200',
-        (attachments.length > 0 || uploadQueue.length > 0) ? 'pb-12' : 'pb-10'
-      )}>
+      <div 
+        role="region"
+        aria-label="File drop zone"
+        className={cx(
+          'relative rounded-2xl bg-muted border transition-all duration-200',
+          (attachments.length > 0 || uploadQueue.length > 0) ? 'pb-12' : 'pb-10',
+          isDragOver 
+            ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-950/50' 
+            : 'border-border dark:border-zinc-700'
+        )}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         {(attachments.length > 0 || uploadQueue.length > 0) && (
           <div className="p-3 pb-0">
             <div
@@ -410,6 +470,15 @@ function PureMultimodalInput({
             />
           )}
         </div>
+
+        {isDragOver && (
+          <div className="absolute inset-0 rounded-2xl bg-blue-500/10 dark:bg-blue-400/10 flex items-center justify-center pointer-events-none">
+            <div className="flex flex-col items-center gap-2 text-blue-600 dark:text-blue-400">
+              <PaperclipIcon size={24} />
+              <span className="text-sm font-medium">Drop files to attach</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <NotionSelectorModal
