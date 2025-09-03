@@ -13,6 +13,46 @@ export async function middleware(request: NextRequest) {
     return new Response('pong', { status: 200 });
   }
 
+  // Basic HTTP Authentication for team access
+  if (process.env.BASIC_AUTH_USERNAME && process.env.BASIC_AUTH_PASSWORD) {
+    const authorization = request.headers.get('authorization');
+    
+    if (!authorization) {
+      return new Response('Authentication required', {
+        status: 401,
+        headers: {
+          'WWW-Authenticate': 'Basic realm="Secure Area"',
+        },
+      });
+    }
+
+    const [scheme, encoded] = authorization.split(' ');
+    
+    if (scheme !== 'Basic' || !encoded) {
+      return new Response('Invalid authentication', {
+        status: 401,
+        headers: {
+          'WWW-Authenticate': 'Basic realm="Secure Area"',
+        },
+      });
+    }
+
+    const credentials = Buffer.from(encoded, 'base64').toString('utf-8');
+    const [username, password] = credentials.split(':');
+
+    if (
+      username !== process.env.BASIC_AUTH_USERNAME ||
+      password !== process.env.BASIC_AUTH_PASSWORD
+    ) {
+      return new Response('Invalid credentials', {
+        status: 401,
+        headers: {
+          'WWW-Authenticate': 'Basic realm="Secure Area"',
+        },
+      });
+    }
+  }
+
   if (pathname.startsWith('/api/auth')) {
     return NextResponse.next();
   }
