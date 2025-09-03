@@ -206,7 +206,7 @@ const PureDocumentHeader = ({
   isStreaming,
 }: {
   title: string;
-  kind: ArtifactKind;
+  kind: ArtifactKind | 'sheet';
   isStreaming: boolean;
 }) => (
   <div className="p-4 border rounded-t-2xl flex flex-row gap-2 items-start sm:items-center justify-between dark:bg-muted border-b-0 dark:border-zinc-700">
@@ -250,7 +250,9 @@ const DocumentContent = ({ document }: { document: Document }) => {
     content: document.content ?? '',
     isCurrentVersion: true,
     currentVersionIndex: 0,
-    status: artifact.isVisible ? artifact.status : 'idle',
+    status: artifact.isVisible 
+      ? (artifact.status === 'updated' ? 'idle' : artifact.status)
+      : 'idle' as 'streaming' | 'idle',
     saveContent: () => {},
     suggestions: [],
   };
