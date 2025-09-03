@@ -31,7 +31,20 @@ export async function fetchWithErrorHandlers(
   init?: RequestInit,
 ) {
   try {
-    const response = await fetch(input, init);
+    // Add timeout to detect stuck requests (6 minutes = maxDuration + buffer)
+    const timeoutMs = 6 * 60 * 1000; // 6 minutes
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+
+    const response = await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const { code, cause } = await response.json();
@@ -42,6 +55,16 @@ export async function fetchWithErrorHandlers(
   } catch (error: unknown) {
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       throw new ChatSDKError('offline:chat');
+    }
+
+    // Handle fetch timeout/abort
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        throw new ChatSDKError('timeout:chat');
+      }
+      if (error.message.includes('timeout')) {
+        throw new ChatSDKError('timeout:chat');
+      }
     }
 
     throw error;
