@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { title, content, authorId } = await request.json();
+    const { title, content, authorId, contentAiFolderId } = await request.json();
 
     if (!title || !content || !authorId) {
       return NextResponse.json(
@@ -33,28 +33,28 @@ export async function POST(request: NextRequest) {
     const htmlContent = await markdownToHtml(content);
 
     // Create internal article payload
-    const articlePayload = {
+    const articlePayload: any = {
       title,
       body: htmlContent,
       author_id: Number.parseInt(authorId),
       owner_id: Number.parseInt(authorId), // Same as author_id
       state: 'published',
-      locale: 'en', // Required for internal articles
+      ...(contentAiFolderId && {
+        parent_id: Number.parseInt(contentAiFolderId),
+        parent_type: 'folder',
+      }),
     };
 
-    const response = await fetch(
-      'https://api.intercom.io/internal_articles',
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          'Intercom-Version': '2.14',
-        },
-        body: JSON.stringify(articlePayload),
+    const response = await fetch('https://api.intercom.io/internal_articles/', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'Intercom-Version': '2.14',
       },
-    );
+      body: JSON.stringify(articlePayload),
+    });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

@@ -235,7 +235,7 @@ export function IntercomUploadDialog({
                 <>
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
                     <p className="text-sm text-amber-800">
-                      ℹ️ Internal articles will be created at the root level. You'll need to manually move them to your desired folder in Intercom.
+                      ℹ️ Internal articles will be created at the root level. You&apos;ll need to manually move them to your desired folder in Intercom.
                     </p>
                   </div>
                   <div className="space-y-2">
