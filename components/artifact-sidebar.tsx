@@ -11,6 +11,8 @@ import type { Document } from '@/lib/db/schema';
 import { fetcher } from '@/lib/utils';
 import { useRef } from 'react';
 import { NotionIcon } from '@/components/notion-slack-icons';
+import { IntercomIcon } from '@/components/icons/intercom';
+import { IntercomUploadDialog } from '@/components/intercom-upload-dialog';
 
 const ARTIFACT_SIDEBAR_WIDTH = '50%';
 
@@ -211,6 +213,13 @@ export function ArtifactSidebar() {
             <Copy className="size-4" />
           </Button>
 
+          {/* Export to Intercom */}
+          <PublishToIntercomButton
+            disabled={isStreaming || !artifact.content?.trim()}
+            titleText={artifact.title}
+            contentText={artifact.content}
+          />
+
           {/* Export to Notion */}
           <PublishToNotionButton
             disabled={isStreaming || !artifact.content?.trim()}
@@ -274,6 +283,42 @@ export function ArtifactSidebar() {
 
 
     </div>
+  );
+}
+
+function PublishToIntercomButton({
+  disabled,
+  titleText,
+  contentText,
+}: {
+  disabled?: boolean;
+  titleText: string;
+  contentText: string;
+}) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        title="Publish to Intercom"
+        className="size-8 p-0"
+        onClick={() => setIsDialogOpen(true)}
+        disabled={disabled}
+      >
+        <span className="text-black dark:text-white">
+          <IntercomIcon size={16} />
+        </span>
+      </Button>
+      
+      <IntercomUploadDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        title={titleText}
+        content={contentText}
+      />
+    </>
   );
 }
 
