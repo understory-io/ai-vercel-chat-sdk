@@ -9,10 +9,12 @@ const filePartSchema = z.object({
   type: z.enum(['file']),
   mediaType: z.enum([
     'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-    'application/pdf', 'text/plain', 'text/markdown', 'application/json', 'text/csv'
+    'application/pdf', 'text/plain', 'text/markdown', 'application/json', 'text/csv',
+    'application/intercom'
   ]),
   name: z.string().min(1).max(100),
-  url: z.string().url(),
+  url: z.string().url().optional(),
+  content: z.string().optional(),
 });
 
 const partSchema = z.union([textPartSchema, filePartSchema]);

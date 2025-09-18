@@ -22,6 +22,8 @@ import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { NotionSelectorModal } from './notion-selector-modal';
+import { IntercomExplorerModal } from './intercom-explorer-modal';
+import { IntercomIcon } from './icons/intercom';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -113,26 +115,34 @@ function PureMultimodalInput({
   const submitForm = useCallback(() => {
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
-    // Separate Notion attachments (with content) from file attachments
+    // Separate context attachments (with content) from file attachments
     const notionAttachments = attachments.filter(a => a.type === 'notion' && a.content);
-    const fileAttachments = attachments.filter(a => a.type !== 'notion');
+    const intercomAttachments = attachments.filter(a => a.type === 'intercom' && a.content);
+    const fileAttachments = attachments.filter(a => a.type !== 'notion' && a.type !== 'intercom');
 
-    // Combine all Notion content with user input into a single text part
+    // Combine all context content with user input into a single text part
     const notionContent = notionAttachments
       .map(attachment => `[Notion Document: ${attachment.name}]\n\n${attachment.content}\n\n---\n`)
       .join('\n');
-    
-    const combinedText = notionContent ? `${notionContent}\n${input}` : input;
+
+    const intercomContent = intercomAttachments
+      .map(attachment => `[Help Center Article: ${attachment.name}]\n\n${attachment.content}\n\n---\n`)
+      .join('\n');
+
+    const allContextContent = [notionContent, intercomContent].filter(Boolean).join('\n');
+    const combinedText = allContextContent ? `${allContextContent}\n${input}` : input;
 
     sendMessage({
       role: 'user',
       parts: [
-        ...fileAttachments.map((attachment) => ({
-          type: 'file' as const,
-          url: attachment.url,
-          name: attachment.name,
-          mediaType: attachment.contentType,
-        })),
+        ...fileAttachments
+          .filter((attachment) => attachment.url) // Only include attachments with URLs
+          .map((attachment) => ({
+            type: 'file' as const,
+            url: attachment.url as string, // Safe because we filtered for url existence
+            name: attachment.name,
+            mediaType: attachment.contentType,
+          })),
         {
           type: 'text',
           text: combinedText,
@@ -215,6 +225,8 @@ function PureMultimodalInput({
   const { isAtBottom, scrollToBottom } = useScrollToBottom();
   const [notionModalOpen, setNotionModalOpen] = useState(false);
   const [selectedNotionPages, setSelectedNotionPages] = useState<Array<{id: string, title: string, path: string, lastModified: string}>>([]);
+  const [intercomModalOpen, setIntercomModalOpen] = useState(false);
+  const [selectedIntercomArticles, setSelectedIntercomArticles] = useState<Array<{id: string, title: string, body?: string}>>([]);
 
   // Convert selected Notion pages to attachments
   useEffect(() => {
@@ -237,6 +249,24 @@ function PureMultimodalInput({
       return [...nonNotionAttachments, ...notionAttachments];
     });
   }, [selectedNotionPages, setAttachments]);
+
+  // Convert selected Intercom articles to attachments
+  useEffect(() => {
+    const intercomAttachments = selectedIntercomArticles.map((article) => ({
+      name: article.title,
+      contentType: 'application/intercom',
+      type: 'intercom' as const,
+      intercomId: article.id,
+      content: article.body || '',
+      // No URL needed - content is already available
+    }));
+
+    setAttachments((prev) => {
+      // Remove existing intercom attachments and add new ones
+      const nonIntercomAttachments = prev.filter(a => a.type !== 'intercom');
+      return [...nonIntercomAttachments, ...intercomAttachments];
+    });
+  }, [selectedIntercomArticles, setAttachments]);
 
   useEffect(() => {
     if (status === 'submitted') {
@@ -457,6 +487,7 @@ function PureMultimodalInput({
         <div className="absolute bottom-0 left-0 p-2 flex flex-row gap-1">
           <AttachmentsButton fileInputRef={fileInputRef} status={status} />
           <NotionButton status={status} onClick={() => setNotionModalOpen(true)} />
+          <IntercomButton status={status} onClick={() => setIntercomModalOpen(true)} />
         </div>
 
         <div className="absolute bottom-0 right-0 p-2">
@@ -491,6 +522,17 @@ function PureMultimodalInput({
           }
         }}
         onSelect={setSelectedNotionPages}
+      />
+
+      <IntercomExplorerModal
+        open={intercomModalOpen}
+        onOpenChange={(open) => {
+          setIntercomModalOpen(open);
+          if (!open) {
+            // Modal closed, clear the temporary selection state
+          }
+        }}
+        onSelect={setSelectedIntercomArticles}
       />
     </div>
   );
@@ -613,4 +655,30 @@ function PureNotionButton({
 }
 
 const NotionButton = memo(PureNotionButton);
+
+function PureIntercomButton({
+  status,
+  onClick,
+}: {
+  status: UseChatHelpers<ChatMessage>['status'];
+  onClick?: () => void;
+}) {
+  return (
+    <Button
+      data-testid="intercom-button"
+      className="rounded-md p-[7px] h-fit dark:border-zinc-700 hover:dark:bg-zinc-900 hover:bg-zinc-200"
+      onClick={(event) => {
+        event.preventDefault();
+        onClick?.();
+      }}
+      disabled={status !== 'ready'}
+      variant="ghost"
+      title="Add Help Center articles"
+    >
+      <IntercomIcon size={16} />
+    </Button>
+  );
+}
+
+const IntercomButton = memo(PureIntercomButton);
 

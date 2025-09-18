@@ -3,6 +3,7 @@
 import type { Attachment } from '@/lib/types';
 import { X } from 'lucide-react';
 import { NotionIcon } from './notion-slack-icons';
+import { IntercomIcon } from './icons/intercom';
 
 interface FileAttachmentProps {
   attachment: Attachment;
@@ -55,6 +56,12 @@ const fileTypeConfig = {
     textColor: 'text-white',
     progressColor: '#000000',
   },
+  intercom: {
+    abbreviation: 'HC',
+    color: 'bg-blue-600',
+    textColor: 'text-white',
+    progressColor: '#2563eb',
+  },
   default: {
     abbreviation: 'FILE',
     color: 'bg-zinc-500',
@@ -89,8 +96,9 @@ function getFileTypeFromMimeType(mimeType: string): string {
     'text/markdown': 'md',
     'image/svg+xml': 'svg',
     'application/notion': 'notion',
+    'application/intercom': 'intercom',
   };
-  
+
   return mimeToType[mimeType] || 'default';
 }
 
@@ -124,7 +132,7 @@ export function FileAttachment({
     const contentStatus = (attachment as any).contentStatus;
     const isContentLoading = contentStatus === 'loading';
     const hasContentError = contentStatus === 'error';
-    
+
     return (
       <div className="relative group">
         <div className={`border rounded-lg ${
@@ -163,6 +171,45 @@ export function FileAttachment({
               </div>
               <div className="text-[10px] text-muted-foreground uppercase">
                 {isContentLoading ? 'Loading...' : hasContentError ? 'Error' : 'Loaded'}
+              </div>
+            </div>
+
+            {/* Remove button */}
+            {onRemove && (
+              <button
+                type="button"
+                onClick={onRemove}
+                className="absolute -top-1 -right-1 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="size-3" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if this is an Intercom article
+  if (type === 'intercom') {
+    const config = fileTypeConfig.intercom;
+    const displayName = truncateFileName(name || 'Help Article');
+
+    return (
+      <div className="relative group">
+        <div className="border rounded-lg border-border/30">
+          <div className="h-16 max-w-[200px] min-w-[120px] bg-muted rounded-lg flex items-center gap-3 px-3 py-2">
+            <div className={`size-8 rounded flex items-center justify-center ${config.color} ${config.textColor}`}>
+              <IntercomIcon size={14} />
+            </div>
+
+            {/* File info */}
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-medium text-foreground truncate" title={name}>
+                {displayName}
+              </div>
+              <div className="text-[10px] text-muted-foreground uppercase">
+                Help Article
               </div>
             </div>
 

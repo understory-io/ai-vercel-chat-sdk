@@ -53,11 +53,12 @@ export type ChatMessage = UIMessage<
 
 export interface Attachment {
   name: string;
-  url: string;
+  url?: string;
   contentType: string;
-  type?: 'file' | 'notion';
+  type?: 'file' | 'notion' | 'intercom';
   notionId?: string;
   notionPath?: string;
+  intercomId?: string;
   lastModified?: string;
   content?: string;
   contentStatus?: 'pending' | 'loading' | 'loaded' | 'error';
