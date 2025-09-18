@@ -106,17 +106,21 @@ export async function POST(request: Request) {
   }
 
   try {
-    const {
-      id,
-      message,
-      selectedChatModel,
-      selectedVisibilityType,
-    }: {
-      id: string;
-      message: ChatMessage;
-      selectedChatModel: ChatModel['id'];
-      selectedVisibilityType: VisibilityType;
-    } = requestBody;
+    const { id, selectedChatModel, selectedVisibilityType } = requestBody;
+
+    // Transform message to ensure URL compatibility with UI types
+    const message: ChatMessage = {
+      ...requestBody.message,
+      parts: requestBody.message.parts.map((part) => {
+        if (part.type === 'file') {
+          return {
+            ...part,
+            url: part.url || `data:${part.mediaType};base64,`, // Provide placeholder if missing
+          };
+        }
+        return part;
+      }) as any, // Type assertion to satisfy UI types
+    };
 
     const session = await auth();
 

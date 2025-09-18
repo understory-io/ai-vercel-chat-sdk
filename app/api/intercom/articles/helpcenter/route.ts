@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       while (nextUrl && pageCount < 10) { // Safety limit of 10 pages
         pageCount++;
 
-        const response = await fetch(nextUrl, {
+        const response: Response = await fetch(nextUrl, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Accept': 'application/json',
