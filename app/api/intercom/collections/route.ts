@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
     // Fetch all pages of collections
     while (nextUrl && pageCount < 10) { // Safety limit of 10 pages
       pageCount++;
-      console.log(`Fetching collections page ${pageCount}: ${nextUrl}`);
 
       const response: Response = await fetch(nextUrl, {
         headers: {
@@ -43,10 +42,7 @@ export async function GET(request: NextRequest) {
 
       // Check for next page
       nextUrl = data.pages?.next || null;
-      console.log(`Fetched ${pageCollections.length} collections from page ${pageCount}, total so far: ${allCollections.length}`);
     }
-
-    console.log(`Total collections fetched: ${allCollections.length}`);
 
     // Transform collections into a tree structure for easier navigation
     const collections = allCollections;

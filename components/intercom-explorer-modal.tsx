@@ -85,9 +85,6 @@ export function IntercomExplorerModal({
       }
 
       const data = await response.json();
-      console.log('Collections received:', data.collections);
-      console.log('Number of root collections:', data.collections?.length);
-      console.log('Total flat collections:', data.flat_collections?.length);
       setRootCollections(data.collections || []);
     } catch (error) {
       console.error('Error fetching collections:', error);

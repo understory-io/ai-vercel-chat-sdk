@@ -79,7 +79,7 @@ IF writing a more general documentation for a feature use the following structur
 -—-
 
 ## [This is how X feature work/ What can I do with feature/short feature description declaration]
-[Write a paragraph on how the feature works, this text should clearly explain how to utilize the feature. It's for the guest that read the initial lines of text, and step-by-step guide and either want to understand the feature more in depth.]
+[Write a paragraph on how the feature works, this text should clearly explain how to utilize the feature. It should contain a mix of business value and practical everyday use. It's for the guest that read the initial lines of text, and step-by-step guide and either want to understand the feature more in depth.]
 ---
 ### FAQ [ONLY generate if you have relevant FAQ questions or asked to. You must under NO circumstance add information to questions or answers, that is not CLEARLY depicted in your input. Rather do not include a question, than producing a wrong one. DO NOT hallucinate.]
 1. **[Question]**
