@@ -127,7 +127,7 @@ Did this answer your question? If not, please reach out to us in the chat window
 ---
 
 WRITING GUIDELINES:
-- Use simple, non-technical language that tech-illiterate users understand
+- Use simple, clear, non-technical language that tech-illiterate users understand
 - Focus on UI workflows and practical "how-to" guidance
 - Avoid technical troubleshooting unless specifically requested
 - Use Understory terminology when it adds clarity, but explain when needed
