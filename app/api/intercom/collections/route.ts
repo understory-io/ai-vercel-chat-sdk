@@ -11,27 +11,45 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const response = await fetch('https://api.intercom.io/help_center/collections', {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json',
-        'Intercom-Version': '2.14',
-      },
-    });
+    const allCollections: any[] = [];
+    let nextUrl: string | null = 'https://api.intercom.io/help_center/collections';
+    let pageCount = 0;
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error('Intercom API error:', errorData);
-      return NextResponse.json(
-        { error: `Failed to fetch collections: ${response.statusText}` },
-        { status: response.status }
-      );
+    // Fetch all pages of collections
+    while (nextUrl && pageCount < 10) { // Safety limit of 10 pages
+      pageCount++;
+      console.log(`Fetching collections page ${pageCount}: ${nextUrl}`);
+
+      const response: Response = await fetch(nextUrl, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Accept': 'application/json',
+          'Intercom-Version': '2.14',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Intercom API error:', errorData);
+        return NextResponse.json(
+          { error: `Failed to fetch collections: ${response.statusText}` },
+          { status: response.status }
+        );
+      }
+
+      const data = await response.json();
+      const pageCollections = data.data || [];
+      allCollections.push(...pageCollections);
+
+      // Check for next page
+      nextUrl = data.pages?.next || null;
+      console.log(`Fetched ${pageCollections.length} collections from page ${pageCount}, total so far: ${allCollections.length}`);
     }
 
-    const data = await response.json();
-    
+    console.log(`Total collections fetched: ${allCollections.length}`);
+
     // Transform collections into a tree structure for easier navigation
-    const collections = data.data || [];
+    const collections = allCollections;
     
     // Group collections by parent_id for tree building
     const collectionMap = new Map();

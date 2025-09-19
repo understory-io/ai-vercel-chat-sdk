@@ -85,6 +85,9 @@ export function IntercomExplorerModal({
       }
 
       const data = await response.json();
+      console.log('Collections received:', data.collections);
+      console.log('Number of root collections:', data.collections?.length);
+      console.log('Total flat collections:', data.flat_collections?.length);
       setRootCollections(data.collections || []);
     } catch (error) {
       console.error('Error fetching collections:', error);
@@ -274,9 +277,14 @@ export function IntercomExplorerModal({
               <div className="flex items-center gap-2">
                 {viewState.path.length > 0 && (
                   <Button
+                    type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={navigateBack}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      navigateBack();
+                    }}
                     className="p-1"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -289,9 +297,14 @@ export function IntercomExplorerModal({
                 </h2>
               </div>
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => onOpenChange(false)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onOpenChange(false);
+                }}
                 className="p-1"
               >
                 <X className="h-5 w-5" />
