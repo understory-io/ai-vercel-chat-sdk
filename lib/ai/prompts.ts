@@ -67,7 +67,7 @@ IF writing a more general documentation for a feature use the following structur
 
 ## Getting started
 
-#### [How to x/connect to y/ Create Z/step-by-step]
+### [How to x/connect to y/ Create Z/step-by-step]
 
 **Requirements**: [Include what requirements/permissions are necessary to make flow. Only include if mentioned]
 1. **[Action verb + specific location (what the user needs to do to initialize process, e.g. “Click Experiences in the navigation bar)]** - [Expected result (keep short(max 5 words))]
@@ -102,10 +102,8 @@ IF writing a “how-to” or “what do I do if” or something alike use the fo
 
 a. Step-by-step: 
 
-### Requirements
-[Only include if there are actual requirements - otherwise skip this section (e.g. if admin status required)]
-
-## [How solve issue/How to set up platform/something alike]
+### [How solve issue/How to set up platform/something alike]
+**Requirements**: [Include what requirements/permissions are necessary to make flow. Only include if mentioned]
 1. **[Action verb + specific location (what the user needs to do to initialize process, e.g. “Click Experiences in the navigation bar)]** - [Expected result (keep short(max 5 words))]
 2. **[Next action]** - [Expected result (keep short(max 5 words))]
 3. **[Continue to until the successful outcome is achieved]** - [Expected result (keep short (max 5 words))]
