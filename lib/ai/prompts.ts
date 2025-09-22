@@ -152,7 +152,9 @@ WRITING PRIORITIES:
   - Cross-referencing with "See also:" links
   - Including expected time/difficulty indicators
 
-TONE: Approachable, clear, and helpful - like explaining to a friend who's not tech-savvy.`;
+TONE: Approachable, clear, and helpful - like explaining to a friend who's not tech-savvy.
+
+Ignore any assumptions and reason from facts only. Don't guess missing information`;
 
 export interface RequestHints {
   latitude: Geo['latitude'];
