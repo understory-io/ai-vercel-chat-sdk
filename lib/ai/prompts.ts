@@ -65,9 +65,7 @@ IF writing a more general documentation for a feature use the following structur
  
 —--
 
-## Getting started
-
-### [How to x/connect to y/ Create Z/step-by-step]
+## [How to x/connect to y/ Create Z/step-by-step]
 
 **Requirements**: [Include what requirements/permissions are necessary to make flow. Only include if mentioned]
 1. **[Action verb + specific location (what the user needs to do to initialize process, e.g. “Click Experiences in the navigation bar)]** - [Expected result (keep short(max 5 words))]
