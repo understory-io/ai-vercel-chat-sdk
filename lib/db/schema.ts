@@ -71,6 +71,7 @@ export const document = pgTable(
   {
     id: uuid('id').notNull().defaultRandom(),
     createdAt: timestamp('createdAt').notNull(),
+    updatedAt: timestamp('updatedAt').notNull().defaultNow(), // Track last update time
     title: text('title').notNull(),
     content: text('content'),
     kind: varchar('kind', { enum: ['text', 'code', 'image'] })
@@ -79,6 +80,10 @@ export const document = pgTable(
     userId: uuid('userId')
       .notNull()
       .references(() => user.id),
+    isAutosave: boolean('isAutosave').notNull().default(true), // Distinguish autosaves from explicit versions
+    versionType: varchar('versionType', { enum: ['autosave', 'explicit', 'ai_update'] })
+      .notNull()
+      .default('autosave'), // Type of save operation
   },
   (table) => {
     return {

@@ -62,7 +62,7 @@ export async function getCached(key: string): Promise<any | null> {
   return null;
 }
 
-export async function setCached(key: string, data: any, ttlSeconds: number = 300): Promise<void> {
+export async function setCached(key: string, data: any, ttlSeconds = 300): Promise<void> {
   try {
     const client = await ensureRedisConnected();
     if (client) {

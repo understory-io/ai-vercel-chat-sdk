@@ -2,8 +2,11 @@
 
 import { exampleSetup } from 'prosemirror-example-setup';
 import { inputRules } from 'prosemirror-inputrules';
-import { EditorState } from 'prosemirror-state';
+import { EditorState, TextSelection } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
+import { toggleMark } from 'prosemirror-commands';
+import { keymap } from 'prosemirror-keymap';
+import { splitListItem, liftListItem, sinkListItem } from 'prosemirror-schema-list';
 import React, { memo, useEffect, useRef } from 'react';
 
 import type { Suggestion } from '@/lib/db/schema';
@@ -31,6 +34,7 @@ type EditorProps = {
   currentVersionIndex: number;
   suggestions: Array<Suggestion>;
   isInline?: boolean;
+  onEditorReady?: (editorView: EditorView) => void;
 };
 
 function PureEditor({
@@ -39,6 +43,7 @@ function PureEditor({
   suggestions,
   status,
   isInline = false,
+  onEditorReady,
 }: EditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<EditorView | null>(null);
@@ -48,6 +53,39 @@ function PureEditor({
       const state = EditorState.create({
         doc: buildDocumentFromContent(content),
         plugins: [
+          // List-specific key bindings with proper commands
+          keymap({
+            'Enter': (state, dispatch) => {
+              // Check if we're in a list item
+              const { $from } = state.selection;
+              for (let i = $from.depth; i >= 0; i--) {
+                const node = $from.node(i);
+                if (node.type.name === 'list_item') {
+                  // We're in a list item, use splitListItem
+                  const splitCommand = splitListItem(state.schema.nodes.list_item);
+                  return splitCommand(state, dispatch);
+                }
+              }
+              // Not in a list, use default enter behavior
+              return false;
+            },
+            'Shift-Enter': (state, dispatch) => {
+              // Insert a line break within the current block
+              if (dispatch) {
+                const { tr } = state;
+                // Try to insert a hard break if available, otherwise insert text
+                if (state.schema.nodes.hard_break) {
+                  tr.replaceSelectionWith(state.schema.nodes.hard_break.create());
+                } else {
+                  tr.insertText('\n');
+                }
+                dispatch(tr);
+              }
+              return true;
+            },
+            'Tab': sinkListItem(documentSchema.nodes.list_item),
+            'Shift-Tab': liftListItem(documentSchema.nodes.list_item),
+          }),
           ...exampleSetup({ schema: documentSchema, menuBar: false }),
           inputRules({
             rules: [
@@ -67,6 +105,7 @@ function PureEditor({
         state,
       });
 
+      onEditorReady?.(editorRef.current);
       // No additional styling needed - let CSS handle it
     }
 
@@ -90,6 +129,19 @@ function PureEditor({
             onSaveContent,
           });
         },
+        handleKeyDown: (view, event) => {
+          // Override Cmd+B to prevent sidebar toggle
+          if ((event.metaKey || event.ctrlKey) && event.key === 'b') {
+            event.preventDefault();
+            const { state, dispatch } = view;
+            const { schema } = state;
+            const markType = schema.marks.strong;
+            const command = toggleMark(markType);
+            command(state, dispatch);
+            return true;
+          }
+          return false;
+        },
       });
     }
   }, [onSaveContent]);
@@ -103,11 +155,26 @@ function PureEditor({
       if (status === 'streaming') {
         const newDocument = buildDocumentFromContent(content);
 
+        // Store cursor position
+        const { from, to } = editorRef.current.state.selection;
+
         const transaction = editorRef.current.state.tr.replaceWith(
           0,
           editorRef.current.state.doc.content.size,
           newDocument.content,
         );
+
+        // Preserve cursor position during streaming
+        try {
+          const maxPos = transaction.doc.content.size;
+          const safeFrom = Math.min(from, maxPos);
+          const safeTo = Math.min(to, maxPos);
+          transaction.setSelection(
+            TextSelection.create(transaction.doc, safeFrom, safeTo)
+          );
+        } catch (e) {
+          // If we can't restore the exact position, just continue
+        }
 
         transaction.setMeta('no-save', true);
         editorRef.current.dispatch(transaction);
@@ -117,11 +184,29 @@ function PureEditor({
       if (currentContent !== content) {
         const newDocument = buildDocumentFromContent(content);
 
+        // Store cursor position before update
+        const { from, to } = editorRef.current.state.selection;
+
         const transaction = editorRef.current.state.tr.replaceWith(
           0,
           editorRef.current.state.doc.content.size,
           newDocument.content,
         );
+
+        // Try to preserve cursor position after content update
+        // This is important to prevent cursor jumping during autosave
+        try {
+          const maxPos = transaction.doc.content.size;
+          const safeFrom = Math.min(from, maxPos);
+          const safeTo = Math.min(to, maxPos);
+
+          transaction.setSelection(
+            TextSelection.create(transaction.doc, safeFrom, safeTo)
+          );
+        } catch (e) {
+          // If we can't restore the exact position (e.g., position no longer exists),
+          // just let ProseMirror handle it
+        }
 
         transaction.setMeta('no-save', true);
         editorRef.current.dispatch(transaction);
@@ -150,40 +235,44 @@ function PureEditor({
   }, [suggestions, content]);
 
   return (
-    <div
-      className={`
-        relative notion-editor
-        max-w-none w-full
-        prose prose-lg dark:prose-invert
-        prose-headings:font-semibold prose-headings:tracking-tight
-        prose-h1:text-3xl prose-h1:mt-8 prose-h1:mb-4
-        prose-h2:text-2xl prose-h2:mt-6 prose-h2:mb-3
-        prose-h3:text-xl prose-h3:mt-4 prose-h3:mb-2
-        prose-p:text-base prose-p:leading-7 prose-p:my-3
-        prose-ul:my-4 prose-ol:my-4
-        prose-li:my-1
-        prose-blockquote:border-l-4 prose-blockquote:border-gray-300 prose-blockquote:pl-4 prose-blockquote:italic
-        prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
-        prose-pre:bg-gray-50 dark:prose-pre:bg-gray-900 prose-pre:border prose-pre:rounded-lg prose-pre:p-4
-        [&_.ProseMirror]:outline-none
-        [&_.ProseMirror_h1]:text-3xl
-        [&_.ProseMirror_h2]:text-2xl
-        [&_.ProseMirror_h3]:text-xl
-        [&_.ProseMirror_p]:text-base
-        [&_.ProseMirror_p]:line-height-7
-        [&_.ProseMirror_p:empty:before]:content-['Type_something...']
-        [&_.ProseMirror_p:empty:before]:text-gray-400
-        [&_.ProseMirror_p:empty:before]:pointer-events-none
-        [&_.ProseMirror_p:empty:before]:absolute
-        [&_.ProseMirror]:font-normal
-      `}
-      ref={containerRef}
-      style={{
-        fontFamily:
-          '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        minHeight: '300px',
-      }}
-    />
+    <>
+      <div
+        className={`
+          relative notion-editor
+          max-w-none w-full
+          prose prose-lg dark:prose-invert
+          prose-headings:font-semibold prose-headings:tracking-tight
+          prose-h1:text-3xl prose-h1:mt-8 prose-h1:mb-4
+          prose-h2:text-2xl prose-h2:mt-6 prose-h2:mb-3
+          prose-h3:text-xl prose-h3:mt-4 prose-h3:mb-2
+          prose-p:text-base prose-p:leading-7 prose-p:my-3
+          prose-ul:my-4 prose-ol:my-4
+          prose-li:my-1
+          prose-blockquote:border-l-4 prose-blockquote:border-gray-300 prose-blockquote:pl-4 prose-blockquote:italic
+          prose-code:bg-gray-100 dark:prose-code:bg-gray-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
+          prose-pre:bg-gray-50 dark:prose-pre:bg-gray-900 prose-pre:border prose-pre:rounded-lg prose-pre:p-4
+          prose-a:text-blue-600 prose-a:underline prose-a:decoration-blue-600/30 hover:prose-a:decoration-blue-600
+          dark:prose-a:text-blue-400 dark:prose-a:decoration-blue-400/30 dark:hover:prose-a:decoration-blue-400
+          [&_.ProseMirror]:outline-none
+          [&_.ProseMirror_h1]:text-3xl
+          [&_.ProseMirror_h2]:text-2xl
+          [&_.ProseMirror_h3]:text-xl
+          [&_.ProseMirror_p]:text-base
+          [&_.ProseMirror_p]:line-height-7
+          [&_.ProseMirror_p:empty:before]:content-['Type_something...']
+          [&_.ProseMirror_p:empty:before]:text-gray-400
+          [&_.ProseMirror_p:empty:before]:pointer-events-none
+          [&_.ProseMirror_p:empty:before]:absolute
+          [&_.ProseMirror]:font-normal
+        `}
+        ref={containerRef}
+        style={{
+          fontFamily:
+            '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          minHeight: '300px',
+        }}
+      />
+    </>
   );
 }
 
@@ -195,7 +284,8 @@ function areEqual(prevProps: EditorProps, nextProps: EditorProps) {
     !(prevProps.status === 'streaming' && nextProps.status === 'streaming') &&
     prevProps.content === nextProps.content &&
     prevProps.onSaveContent === nextProps.onSaveContent &&
-    prevProps.isInline === nextProps.isInline
+    prevProps.isInline === nextProps.isInline &&
+    prevProps.onEditorReady === nextProps.onEditorReady
   );
 }
 

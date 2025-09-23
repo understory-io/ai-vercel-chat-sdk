@@ -283,15 +283,49 @@ export async function saveDocument({
   kind,
   content,
   userId,
+  versionType = 'autosave',
 }: {
   id: string;
   title: string;
   kind: ArtifactKind;
   content: string;
   userId: string;
+  versionType?: 'autosave' | 'explicit' | 'ai_update';
 }) {
   try {
-    console.log('Saving document with userId:', userId);
+    console.log('Saving document with userId:', userId, 'versionType:', versionType);
+
+    // For autosaves, check if we should update the latest autosave or create a new one
+    if (versionType === 'autosave') {
+      // Get the most recent document version
+      const [latestDoc] = await db
+        .select()
+        .from(document)
+        .where(eq(document.id, id))
+        .orderBy(desc(document.createdAt))
+        .limit(1);
+
+      // If the latest document is an autosave, update it instead of creating a new one
+      // This prevents database cluttering with multiple autosave versions
+      if (latestDoc?.isAutosave) {
+        return await db
+          .update(document)
+          .set({
+            content,
+            title,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(document.id, id),
+              eq(document.createdAt, latestDoc.createdAt)
+            )
+          )
+          .returning();
+      }
+    }
+
+    // For non-autosaves or when no recent autosave exists, create a new version
     return await db
       .insert(document)
       .values({
@@ -301,6 +335,9 @@ export async function saveDocument({
         content,
         userId,
         createdAt: new Date(),
+        updatedAt: new Date(),
+        isAutosave: versionType === 'autosave',
+        versionType,
       })
       .returning();
   } catch (error) {
@@ -319,6 +356,7 @@ export async function getDocumentsById({ id }: { id: string }) {
 
     return documents;
   } catch (error) {
+    console.error('getDocumentsById error:', error);
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to get documents by id',

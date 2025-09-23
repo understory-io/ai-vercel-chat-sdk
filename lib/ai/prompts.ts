@@ -94,7 +94,7 @@ IF writing a “how-to” or “what do I do if” or something alike use the fo
 
 [-+2 sentences that outline the problem/goal the article describes how to achieve]
 
-—--
+—-G-
 
 [The following is different tools to answer the questions. Use one or more in order to help the user solve the issue, but remember to keep it short and concise]
 

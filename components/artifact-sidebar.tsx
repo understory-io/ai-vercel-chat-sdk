@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useArtifact } from '@/hooks/use-artifact';
 import { Loader2, X, Copy } from 'lucide-react';
 import { Editor } from '@/components/text-editor';
+import { EditorToolbar } from '@/components/editor-toolbar';
 import { toast } from 'sonner';
 import useSWR, { useSWRConfig } from 'swr';
 import type { Document } from '@/lib/db/schema';
@@ -33,6 +34,7 @@ export function ArtifactSidebar() {
   );
 
   const [isContentDirty, setIsContentDirty] = useState(false);
+  const [editorView, setEditorView] = useState<any>(null);
 
   // Auto-clear updated status after 3 seconds
   useEffect(() => {
@@ -239,6 +241,13 @@ export function ArtifactSidebar() {
         </div>
       </div>
 
+      {/* Editor Toolbar */}
+      {editorView && (
+        <div className="px-4 py-2 border-b border-border bg-muted/30">
+          <EditorToolbar editorView={editorView} />
+        </div>
+      )}
+
       {/* Status Banners */}
       {isStreaming && (
         <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 text-blue-800 text-sm flex items-center gap-2">
@@ -255,7 +264,7 @@ export function ArtifactSidebar() {
 
       {/* Content Area */}
       <div
-        className="flex-1 min-h-0 flex flex-col h-full overflow-y-auto custom-scrollbar"
+        className="flex-1 min-h-0 flex flex-col h-full overflow-y-auto custom-scrollbar relative"
         data-testid="artifact-scroll-container"
         style={{ WebkitOverflowScrolling: 'touch' as any }}
       >
@@ -278,10 +287,9 @@ export function ArtifactSidebar() {
           }}
           suggestions={[]}
           isInline={true}
+          onEditorReady={setEditorView}
         />
       </div>
-
-
     </div>
   );
 }

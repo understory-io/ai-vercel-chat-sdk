@@ -163,7 +163,7 @@ function PureArtifact({
 
   const debouncedHandleContentChange = useDebounceCallback(
     handleContentChange,
-    2000,
+    5000, // Increased from 2 seconds to 5 seconds to reduce DB writes
   );
 
   const saveContent = useCallback(
