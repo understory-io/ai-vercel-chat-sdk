@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState , useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { useArtifact } from '@/hooks/use-artifact';
 import { Loader2, X, Copy } from 'lucide-react';
@@ -10,7 +10,6 @@ import { toast } from 'sonner';
 import useSWR, { useSWRConfig } from 'swr';
 import type { Document } from '@/lib/db/schema';
 import { fetcher } from '@/lib/utils';
-import { useRef } from 'react';
 import { NotionIcon } from '@/components/notion-slack-icons';
 import { IntercomIcon } from '@/components/icons/intercom';
 import { IntercomUploadDialog } from '@/components/intercom-upload-dialog';

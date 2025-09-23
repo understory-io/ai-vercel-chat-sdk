@@ -284,7 +284,7 @@ export function IntercomExplorerModal({
                     }}
                     className="p-1"
                   >
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeft className="size-4" />
                   </Button>
                 )}
                 <h2 className="text-lg font-semibold">
@@ -304,13 +304,13 @@ export function IntercomExplorerModal({
                 }}
                 className="p-1"
               >
-                <X className="h-5 w-5" />
+                <X className="size-5" />
               </Button>
             </div>
 
             <div className="p-4">
               <div className="relative mb-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
                 <Input
                   placeholder="Search collections and articles..."
                   value={searchQuery}
@@ -335,7 +335,7 @@ export function IntercomExplorerModal({
                         className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-muted transition-colors text-left"
                       >
                         <div className="flex items-center gap-3">
-                          <Folder className="h-5 w-5 text-muted-foreground" />
+                          <Folder className="size-5 text-muted-foreground" />
                           <div>
                             <div className="font-medium">{collection.name}</div>
                             {collection.description && (
@@ -345,7 +345,7 @@ export function IntercomExplorerModal({
                             )}
                           </div>
                         </div>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        <ChevronRight className="size-4 text-muted-foreground" />
                       </button>
                     ))}
 
@@ -362,7 +362,7 @@ export function IntercomExplorerModal({
                         }`}
                       >
                         <div className="flex items-center gap-3 flex-1">
-                          <FileText className="h-5 w-5 text-muted-foreground" />
+                          <FileText className="size-5 text-muted-foreground" />
                           <div>
                             <div className="flex items-center gap-2">
                               <div className="font-medium">{article.title}</div>
@@ -382,9 +382,9 @@ export function IntercomExplorerModal({
                           </div>
                         </div>
                         {selectedArticles.some(a => a.id === article.id) && (
-                          <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                          <div className="size-5 rounded-full bg-primary flex items-center justify-center">
                             <svg
-                              className="h-3 w-3 text-primary-foreground"
+                              className="size-3 text-primary-foreground"
                               fill="none"
                               strokeLinecap="round"
                               strokeLinejoin="round"

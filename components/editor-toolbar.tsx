@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef } from 'react';
-import { EditorView } from 'prosemirror-view';
+import type { EditorView } from 'prosemirror-view';
 import { toggleMark, setBlockType } from 'prosemirror-commands';
 import { wrapInList, liftListItem } from 'prosemirror-schema-list';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -13,10 +13,6 @@ import {
   Italic,
   Underline,
   Link2,
-  Heading1,
-  Heading2,
-  Heading3,
-  Heading4,
   List,
   ListOrdered,
 } from 'lucide-react';
@@ -263,7 +259,7 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
               editorView && isMarkActive(editorView.state.schema.marks.strong) && "bg-primary text-primary-foreground"
             )}
           >
-            <Bold className="h-4 w-4" />
+            <Bold className="size-4" />
           </ToggleGroupItem>
           <ToggleGroupItem
             value="italic"
@@ -274,7 +270,7 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
               editorView && isMarkActive(editorView.state.schema.marks.em) && "bg-primary text-primary-foreground"
             )}
           >
-            <Italic className="h-4 w-4" />
+            <Italic className="size-4" />
           </ToggleGroupItem>
           <ToggleGroupItem
             value="underline"
@@ -285,7 +281,7 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
               editorView && isMarkActive(editorView.state.schema.marks.code) && "bg-primary text-primary-foreground"
             )}
           >
-            <Underline className="h-4 w-4" />
+            <Underline className="size-4" />
           </ToggleGroupItem>
           <ToggleGroupItem
             value="link"
@@ -296,7 +292,7 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
               editorView && isMarkActive(editorView.state.schema.marks.link) && "bg-primary text-primary-foreground"
             )}
           >
-            <Link2 className="h-4 w-4" />
+            <Link2 className="size-4" />
           </ToggleGroupItem>
         </ToggleGroup>
 
@@ -363,7 +359,7 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
               isListActive('bullet_list') && "bg-primary text-primary-foreground"
             )}
           >
-            <List className="h-4 w-4" />
+            <List className="size-4" />
           </ToggleGroupItem>
           <ToggleGroupItem
             value="ordered"
@@ -374,7 +370,7 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
               isListActive('ordered_list') && "bg-primary text-primary-foreground"
             )}
           >
-            <ListOrdered className="h-4 w-4" />
+            <ListOrdered className="size-4" />
           </ToggleGroupItem>
         </ToggleGroup>
         </>

@@ -153,7 +153,7 @@ export function CollectionSelectorModal({
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center py-8">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
+              <div className="animate-spin rounded-full size-8 border-b-2 border-primary mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">Loading collections...</p>
             </div>
           </div>
@@ -209,7 +209,7 @@ export function CollectionSelectorModal({
                         : 'border-border'
                     }`}
                   >
-                    <Folder className="size-5 text-muted-foreground flex-shrink-0" />
+                    <Folder className="size-5 text-muted-foreground shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{collection.name}</p>
                       {collection.description && (
@@ -219,7 +219,7 @@ export function CollectionSelectorModal({
                       )}
                     </div>
                     {collection.children && collection.children.length > 0 && (
-                      <ChevronRight className="size-4 text-muted-foreground flex-shrink-0" />
+                      <ChevronRight className="size-4 text-muted-foreground shrink-0" />
                     )}
                   </button>
                 ))}

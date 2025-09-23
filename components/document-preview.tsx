@@ -93,7 +93,10 @@ export function DocumentPreview({
           content: artifact.content,
           id: artifact.documentId,
           createdAt: new Date(),
+          updatedAt: new Date(),
           userId: 'noop',
+          isAutosave: false,
+          versionType: 'ai_update' as const,
         }
       : null;
 
