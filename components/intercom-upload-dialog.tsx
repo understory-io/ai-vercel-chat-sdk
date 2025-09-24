@@ -47,6 +47,68 @@ interface IntercomUploadDialogProps {
 // Session cache for admins
 let adminsCache: IntercomAdmin[] | null = null;
 
+// Helpers for SEO-friendly, <100 words description
+function cleanMarkdownToText(input: string): string {
+  const safe = (input || '').toString();
+  let text = safe.replace(/```[\s\S]*?```/g, ' '); // code blocks
+  text = text.replace(/!\[[^\]]*\]\([^)]*\)/g, ' '); // images
+  text = text.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1'); // links
+  text = text.replace(/[#>*_`~]/g, ' '); // md symbols
+  text = text.replace(/\s+/g, ' ').trim(); // whitespace
+  return text;
+}
+
+function getFocusPhrase(title: string): string {
+  const base = (title || '').trim();
+  const cleaned = base.replace(/[\p{P}\p{S}]+/gu, ' ');
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  const stop = new Set([
+    'the','a','an','and','or','for','of','to','in','on','with','by','from','as','at','is','are','be','your','you','how','what','why','when','guide'
+  ]);
+  const focus = words.filter(w => !stop.has(w.toLowerCase()) && w.length > 2).slice(0, 8);
+  const phrase = (focus.length ? focus.join(' ') : words.slice(0, 8).join(' ')).trim();
+  return phrase;
+}
+
+function limitChars(text: string, maxChars: number): string {
+  const t = (text || '').trim();
+  if (t.length <= maxChars) return t;
+  const sliced = t.slice(0, maxChars).trim();
+  // Try not to cut a word too awkwardly
+  const lastSpace = sliced.lastIndexOf(' ');
+  if (lastSpace > maxChars * 0.6) return sliced.slice(0, lastSpace);
+  return sliced;
+}
+
+// Generate a concise, SEO-leaning description (< 100 words)
+function generateDefaultDescription(title: string, content: string): string {
+  const focus = getFocusPhrase(title);
+  const text = cleanMarkdownToText(content);
+
+  // Try first meaningful sentences
+  const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean);
+  let candidate = sentences[0] || text || title || '';
+
+  // If too short or generic, try adding second sentence
+  if (candidate.split(/\s+/).length < 8 && sentences[1]) {
+    candidate = `${candidate} ${sentences[1]}`.trim();
+  }
+
+  // Ensure focus phrase appears early for SEO
+  const hasFocus = focus && candidate.toLowerCase().includes(focus.toLowerCase());
+  let result = hasFocus ? candidate : `${focus ? focus + ': ' : ''}${candidate}`.trim();
+
+  // Use active-voice cues when missing verbs (simple heuristic)
+  if (!/[a-zA-Z]+\s+(to|for|lets|helps|learn|set|create|manage|troubleshoot|optimize)/i.test(result)) {
+    result = result.replace(/^([A-Za-z].*?)$/u, (m) => `Learn about ${m}`);
+  }
+
+  // Keep under 255 characters
+  result = limitChars(result, 255);
+
+  return result.trim();
+}
+
 export function IntercomUploadDialog({
   isOpen,
   onClose,
@@ -66,6 +128,7 @@ export function IntercomUploadDialog({
   const [collectionPath, setCollectionPath] = useState<Collection[]>([]);
   const [articleDescription, setArticleDescription] = useState('');
   const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
+  const [hasPrefilledDescription, setHasPrefilledDescription] = useState(false);
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -77,6 +140,7 @@ export function IntercomUploadDialog({
       setSelectedCollection(null);
       setCollectionPath([]);
       setArticleDescription('');
+      setHasPrefilledDescription(false);
     }
   }, [isOpen, title]);
 
@@ -86,6 +150,21 @@ export function IntercomUploadDialog({
       loadAdmins();
     }
   }, [articleType]);
+
+  // Prefill description for Help Center once when field becomes relevant
+  useEffect(() => {
+    if (
+      articleType === 'helpcenter' &&
+      !hasPrefilledDescription &&
+      articleDescription.trim() === ''
+    ) {
+      const generated = generateDefaultDescription(articleTitle, content);
+      if (generated) {
+        setArticleDescription(generated);
+        setHasPrefilledDescription(true);
+      }
+    }
+  }, [articleType, hasPrefilledDescription, articleDescription, articleTitle, content]);
 
   const loadAdmins = async () => {
     // Use cached admins if available
@@ -298,15 +377,17 @@ export function IntercomUploadDialog({
                       value={articleDescription}
                       onChange={(e) => {
                         const value = e.target.value;
-                        if (value.length <= 100) {
+                        if (value.length <= 255) {
                           setArticleDescription(value);
+                        } else {
+                          setArticleDescription(value.slice(0, 255));
                         }
                       }}
-                      placeholder="Brief description of the article..."
+                      placeholder="SEO-friendly summary (up to 255 characters)..."
                       className="min-h-[80px] resize-none"
                     />
                     <p className="text-xs text-muted-foreground text-right">
-                      {articleDescription.length}/100 characters
+                      {articleDescription.length}/255 characters
                     </p>
                   </div>
 

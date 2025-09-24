@@ -155,6 +155,12 @@ export async function POST(request: NextRequest) {
     // Convert markdown to HTML
     const htmlContent = await markdownToHtml(content);
 
+    // Normalize description to <= 255 characters if provided
+    const normalizeDescription = (desc: unknown) => {
+      if (typeof desc !== 'string') return undefined;
+      return desc.trim().slice(0, 255);
+    };
+
     // Create help center article payload
     const articlePayload = {
       title,
@@ -163,7 +169,7 @@ export async function POST(request: NextRequest) {
       parent_type: 'collection',
       parent_id: Number.parseInt(collectionId),
       state: 'draft', // Create as draft for review
-      ...(description && { description: description.slice(0, 100) }) // Ensure max 100 chars
+      ...(description && { description: normalizeDescription(description) })
     };
 
     const response = await fetch('https://api.intercom.io/articles', {
