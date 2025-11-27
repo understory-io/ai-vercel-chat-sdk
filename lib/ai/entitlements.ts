@@ -12,8 +12,7 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
    */
   guest: {
     maxMessagesPerDay: 999999,
-    availableChatModelIds: ['gpt41-model'], // V1: Only GPT-4.1 available
-    // Future: Add back ['claude-sonnet-model', 'gpt41-model', 'claude-chat-model', 'chat-model']
+    availableChatModelIds: ['gpt41-model', 'claude-opus45-model'],
   },
 
   /*
@@ -21,8 +20,7 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
    */
   regular: {
     maxMessagesPerDay: 100,
-    availableChatModelIds: ['gpt41-model'], // V1: Only GPT-4.1 available
-    // Future: Add back ['claude-sonnet-model', 'gpt41-model', 'claude-chat-model', 'chat-model']
+    availableChatModelIds: ['gpt41-model', 'claude-opus45-model'],
   },
 
   /*

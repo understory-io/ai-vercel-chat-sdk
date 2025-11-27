@@ -231,17 +231,11 @@ export async function POST(request: Request) {
     // Get the specific model name for logging
     let modelName = 'unknown';
     switch (selectedChatModel) {
-      case 'claude-sonnet-model':
-        modelName = 'Claude Sonnet 4';
-        break;
-      case 'claude-chat-model':
-        modelName = 'Claude Opus 4.1';
-        break;
-      case 'chat-model':
-        modelName = 'GPT-5';
-        break;
       case 'gpt41-model':
         modelName = 'GPT-4.1';
+        break;
+      case 'claude-opus45-model':
+        modelName = 'Claude Opus 4.5';
         break;
       default:
         modelName = selectedChatModel;
