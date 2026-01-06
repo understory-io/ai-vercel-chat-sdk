@@ -505,5 +505,21 @@ export class NotionService {
   }
 }
 
-// Export singleton instance
-export const notionService = new NotionService();
+// Export lazy singleton instance getter
+let _notionService: NotionService | null = null;
+
+export function getNotionService(): NotionService {
+  if (!_notionService) {
+    _notionService = new NotionService();
+  }
+  return _notionService;
+}
+
+// For backwards compatibility - will throw if accessed without env vars
+export const notionService = {
+  get testConnection() { return getNotionService().testConnection.bind(getNotionService()); },
+  get searchPages() { return getNotionService().searchPages.bind(getNotionService()); },
+  get getRecentPages() { return getNotionService().getRecentPages.bind(getNotionService()); },
+  get getAllPages() { return getNotionService().getAllPages.bind(getNotionService()); },
+  get getPageContent() { return getNotionService().getPageContent.bind(getNotionService()); },
+};

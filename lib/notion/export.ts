@@ -142,5 +142,18 @@ export class NotionExporter {
   }
 }
 
-// Export singleton instance
-export const notionExporter = new NotionExporter();
+// Export lazy singleton instance getter
+let _notionExporter: NotionExporter | null = null;
+
+export function getNotionExporter(): NotionExporter {
+  if (!_notionExporter) {
+    _notionExporter = new NotionExporter();
+  }
+  return _notionExporter;
+}
+
+// For backwards compatibility - will throw if accessed without env vars
+export const notionExporter = {
+  get exportToNotion() { return getNotionExporter().exportToNotion.bind(getNotionExporter()); },
+  get testExportConnection() { return getNotionExporter().testExportConnection.bind(getNotionExporter()); },
+};
