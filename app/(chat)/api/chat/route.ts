@@ -26,7 +26,7 @@ import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
 import { isProductionEnvironment } from '@/lib/constants';
 import { myProvider } from '@/lib/ai/providers';
-import { entitlementsByUserType } from '@/lib/ai/entitlements';
+import { getEntitlements } from '@/lib/ai/entitlements';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
 import { geolocation } from '@vercel/functions';
 import {
@@ -159,7 +159,7 @@ export async function POST(request: Request) {
       differenceInHours: 24,
     });
 
-    if (messageCount > entitlementsByUserType[userType].maxMessagesPerDay) {
+    if (messageCount > getEntitlements(userType).maxMessagesPerDay) {
       perf.error(new Error('Rate limited'), {
         stage: 'rate_limiting',
         messageCount,
@@ -168,10 +168,10 @@ export async function POST(request: Request) {
         {
           event: 'chat_request_rate_limited',
           messageCount,
-          maxAllowed: entitlementsByUserType[userType].maxMessagesPerDay,
+          maxAllowed: getEntitlements(userType).maxMessagesPerDay,
           userType,
         },
-        `Chat request rate limited - ${messageCount} messages in 24h (max: ${entitlementsByUserType[userType].maxMessagesPerDay})`,
+        `Chat request rate limited - ${messageCount} messages in 24h (max: ${getEntitlements(userType).maxMessagesPerDay})`,
       );
       return new ChatSDKError('rate_limit:chat').toResponse();
     }

@@ -1,4 +1,3 @@
-import type { UserType } from '@/app/(auth)/auth';
 import type { ChatModel } from './models';
 
 interface Entitlements {
@@ -6,9 +5,13 @@ interface Entitlements {
   availableChatModelIds: Array<ChatModel['id']>;
 }
 
-export const entitlementsByUserType: Record<UserType, Entitlements> = {
-  regular: {
-    maxMessagesPerDay: 999999,
-    availableChatModelIds: ['gpt41-model', 'claude-opus45-model'],
-  },
+const regularEntitlements: Entitlements = {
+  maxMessagesPerDay: 999999,
+  availableChatModelIds: ['gpt41-model', 'claude-opus45-model'],
 };
+
+export function getEntitlements(userType: string): Entitlements {
+  // All users get regular entitlements. Fallback handles cached 'guest' JWTs
+  // from before the Google OAuth migration.
+  return regularEntitlements;
+}
