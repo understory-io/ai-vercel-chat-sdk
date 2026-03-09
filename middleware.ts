@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { guestRegex, isDevelopmentEnvironment } from './lib/constants';
+import { isDevelopmentEnvironment } from './lib/constants';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -25,72 +25,16 @@ export async function middleware(request: NextRequest) {
     secureCookie: !isDevelopmentEnvironment,
   });
 
-  // Basic HTTP Authentication for team access
-  // Skip Basic Auth check if:
-  // 1. User has a valid NextAuth session (token exists), OR
-  // 2. It's an API call from an authenticated frontend (has session cookie)
-  const hasValidSession = token !== null;
-  const isApiCall = pathname.startsWith('/api/');
-  
-  if (process.env.BASIC_AUTH_USERNAME && process.env.BASIC_AUTH_PASSWORD) {
-    // For API calls, check if user has a session
-    if (isApiCall && hasValidSession) {
-      // User is authenticated via session, allow API access
+  if (!token) {
+    // Allow the login page for unauthenticated users
+    if (pathname === '/login') {
       return NextResponse.next();
     }
-    
-    // For non-API routes or API routes without session, check Basic Auth
-    if (!hasValidSession || !isApiCall) {
-      const authorization = request.headers.get('authorization');
-      
-      if (!authorization) {
-        return new Response('Authentication required', {
-          status: 401,
-          headers: {
-            'WWW-Authenticate': 'Basic realm="Secure Area"',
-          },
-        });
-      }
-
-      const [scheme, encoded] = authorization.split(' ');
-      
-      if (scheme !== 'Basic' || !encoded) {
-        return new Response('Invalid authentication', {
-          status: 401,
-          headers: {
-            'WWW-Authenticate': 'Basic realm="Secure Area"',
-          },
-        });
-      }
-
-      const credentials = Buffer.from(encoded, 'base64').toString('utf-8');
-      const [username, password] = credentials.split(':');
-
-      if (
-        username !== process.env.BASIC_AUTH_USERNAME ||
-        password !== process.env.BASIC_AUTH_PASSWORD
-      ) {
-        return new Response('Invalid credentials', {
-          status: 401,
-          headers: {
-            'WWW-Authenticate': 'Basic realm="Secure Area"',
-          },
-        });
-      }
-    }
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  if (!token) {
-    const redirectUrl = encodeURIComponent(request.url);
-
-    return NextResponse.redirect(
-      new URL(`/api/auth/guest?redirectUrl=${redirectUrl}`, request.url),
-    );
-  }
-
-  const isGuest = guestRegex.test(token?.email ?? '');
-
-  if (token && !isGuest && ['/login', '/register'].includes(pathname)) {
+  // Redirect authenticated users away from login
+  if (token && pathname === '/login') {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
@@ -103,7 +47,6 @@ export const config = {
     '/chat/:id',
     '/api/:path*',
     '/login',
-    '/register',
 
     /*
      * Match all request paths except for the ones starting with:
