@@ -104,7 +104,7 @@ export function ApiKeysManager() {
       {createdKey && (
         <div className="p-4 border rounded-lg bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
           <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
-            API key created. Copy it now — it won't be shown again.
+            API key created. Copy it now — it won&apos;t be shown again.
           </p>
           <div className="flex gap-2 items-center">
             <code className="flex-1 text-sm bg-white dark:bg-zinc-900 p-2 rounded border dark:border-zinc-700 font-mono break-all">
