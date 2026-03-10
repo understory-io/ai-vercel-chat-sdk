@@ -27,6 +27,7 @@ import {
   type DBMessage,
   type Chat,
   stream,
+  articleDraft,
 } from './schema';
 import type { ArtifactKind } from '@/components/artifact';
 import type { VisibilityType } from '@/components/visibility-selector';
@@ -541,6 +542,101 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to get stream ids by chat id',
+    );
+  }
+}
+
+// Article Draft functions
+
+export async function createArticleDraft({
+  userId,
+  title,
+  content,
+  description,
+}: {
+  userId: string;
+  title: string;
+  content: string;
+  description?: string;
+}) {
+  try {
+    const [result] = await db
+      .insert(articleDraft)
+      .values({ userId, title, content, description })
+      .returning();
+    return result;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to create article draft',
+    );
+  }
+}
+
+export async function getArticleDraft({ id }: { id: string }) {
+  try {
+    const [result] = await db
+      .select()
+      .from(articleDraft)
+      .where(eq(articleDraft.id, id));
+    return result ?? null;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get article draft',
+    );
+  }
+}
+
+export async function getArticleDraftsByUserId({ userId }: { userId: string }) {
+  try {
+    return await db
+      .select()
+      .from(articleDraft)
+      .where(eq(articleDraft.userId, userId))
+      .orderBy(desc(articleDraft.createdAt));
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get article drafts',
+    );
+  }
+}
+
+export async function updateArticleDraft({
+  id,
+  title,
+  content,
+  description,
+  status,
+  intercomArticleId,
+}: {
+  id: string;
+  title?: string;
+  content?: string;
+  description?: string;
+  status?: 'draft' | 'published' | 'discarded';
+  intercomArticleId?: string;
+}) {
+  try {
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (title !== undefined) updates.title = title;
+    if (content !== undefined) updates.content = content;
+    if (description !== undefined) updates.description = description;
+    if (status !== undefined) updates.status = status;
+    if (intercomArticleId !== undefined)
+      updates.intercomArticleId = intercomArticleId;
+
+    const [result] = await db
+      .update(articleDraft)
+      .set(updates)
+      .where(eq(articleDraft.id, id))
+      .returning();
+    return result;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to update article draft',
     );
   }
 }

@@ -17,7 +17,6 @@ const loggerConfig = {
       'session.refreshToken',
       'args.password',
       'args.token',
-      'args.apiKey',
     ],
     censor: '***REDACTED***',
   },

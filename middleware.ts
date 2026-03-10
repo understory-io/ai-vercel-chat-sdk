@@ -18,27 +18,49 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Get the NextAuth token to check if user has an active session
+  // Allow MCP routes to pass through — they handle their own JWT auth
+  if (pathname.startsWith('/api/mcp')) {
+    return NextResponse.next();
+  }
+
+  // Allow OAuth discovery endpoints (both original and rewritten paths)
+  if (pathname.startsWith('/.well-known/') || pathname.startsWith('/api/well-known/')) {
+    return NextResponse.next();
+  }
+
+  // Check NextAuth JWT token first
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
     secureCookie: !isDevelopmentEnvironment,
   });
 
-  if (!token) {
-    // Allow the login page for unauthenticated users
+  if (token) {
     if (pathname === '/login') {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // No JWT session — for API routes with Bearer tokens, let route handlers validate
+  if (pathname.startsWith('/api/')) {
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
       return NextResponse.next();
     }
-    return NextResponse.redirect(new URL('/login', request.url));
+
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
-  // Redirect authenticated users away from login
-  if (token && pathname === '/login') {
-    return NextResponse.redirect(new URL('/', request.url));
+  // Allow the login page for unauthenticated users
+  if (pathname === '/login') {
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  return NextResponse.redirect(new URL('/login', request.url));
 }
 
 export const config = {

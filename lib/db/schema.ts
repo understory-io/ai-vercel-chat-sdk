@@ -157,3 +157,66 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+// MCP OAuth tables
+
+export const mcpOAuthClient = pgTable('McpOAuthClient', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  clientId: varchar('clientId', { length: 255 }).notNull().unique(),
+  clientName: varchar('clientName', { length: 255 }).notNull(),
+  redirectUris: json('redirectUris').$type<string[]>().notNull().default([]),
+  grantTypes: json('grantTypes').$type<string[]>().notNull().default(['authorization_code']),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+});
+
+export type McpOAuthClient = InferSelectModel<typeof mcpOAuthClient>;
+
+export const mcpAuthCode = pgTable('McpAuthCode', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  code: varchar('code', { length: 255 }).notNull().unique(),
+  clientId: varchar('clientId', { length: 255 }).notNull(),
+  userId: uuid('userId').references(() => user.id),
+  redirectUri: text('redirectUri').notNull(),
+  codeChallenge: text('codeChallenge').notNull(),
+  resource: text('resource'),
+  scope: varchar('scope', { length: 255 }),
+  state: text('state'),
+  expiresAt: timestamp('expiresAt').notNull(),
+  usedAt: timestamp('usedAt'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+});
+
+export type McpAuthCode = InferSelectModel<typeof mcpAuthCode>;
+
+export const mcpRefreshToken = pgTable('McpRefreshToken', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  tokenHash: varchar('tokenHash', { length: 64 }).notNull(),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  clientId: varchar('clientId', { length: 255 }).notNull(),
+  scope: varchar('scope', { length: 255 }),
+  expiresAt: timestamp('expiresAt').notNull(),
+  revokedAt: timestamp('revokedAt'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+});
+
+export type McpRefreshToken = InferSelectModel<typeof mcpRefreshToken>;
+
+export const articleDraft = pgTable('ArticleDraft', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  description: varchar('description', { length: 255 }),
+  status: varchar('status', { enum: ['draft', 'published', 'discarded'] })
+    .notNull()
+    .default('draft'),
+  intercomArticleId: varchar('intercomArticleId', { length: 255 }),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});
+
+export type ArticleDraft = InferSelectModel<typeof articleDraft>;
