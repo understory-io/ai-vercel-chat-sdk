@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/toast';
 import { CollectionSelectorModal } from '@/components/collection-selector-modal';
+import { EditorToolbar } from '@/components/editor-toolbar';
+import { Editor } from '@/components/text-editor';
+import type { EditorView } from 'prosemirror-view';
 import { Loader2, ChevronRight, Folder } from 'lucide-react';
 
 interface DraftData {
@@ -49,6 +52,7 @@ export function PreviewClient({
   const [saving, setSaving] = useState(false);
   const [renderedHtml, setRenderedHtml] = useState('');
   const lastUpdatedAt = useRef(draft.updatedAt);
+  const [editorView, setEditorView] = useState<EditorView | null>(null);
 
   // Publish dialog state
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
@@ -180,6 +184,7 @@ export function PreviewClient({
           updatedAt: updated.updatedAt,
         });
         lastUpdatedAt.current = updated.updatedAt;
+        setEditorView(null);
         setEditing(false);
         toast({ type: 'success', description: 'Saved' });
       } else {
@@ -260,6 +265,7 @@ export function PreviewClient({
   }
 
   function cancelEditing() {
+    setEditorView(null);
     setEditing(false);
   }
 
@@ -491,39 +497,39 @@ export function PreviewClient({
       {editing ? (
         <div className="max-w-3xl mx-auto px-6 py-8 flex flex-col gap-4">
           <div>
-            <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-1 block">
-              Title
-            </label>
             <input
               type="text"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              className="w-full text-2xl font-bold border-0 border-b border-gray-200 dark:border-zinc-700 bg-transparent px-0 py-2 focus:outline-none focus:border-blue-500 dark:text-zinc-50"
+              placeholder="Article title"
+              className="w-full text-3xl font-bold border-0 bg-transparent px-0 py-2 focus:outline-none dark:text-zinc-50 placeholder:text-gray-300 dark:placeholder:text-zinc-600"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-1 block">
-              Description (optional, max 255 chars)
-            </label>
             <input
               type="text"
               value={editDescription}
               onChange={(e) =>
                 setEditDescription(e.target.value.slice(0, 255))
               }
-              placeholder="Short description for SEO"
-              className="w-full text-sm border-0 border-b border-gray-200 dark:border-zinc-700 bg-transparent px-0 py-2 focus:outline-none focus:border-blue-500 dark:text-zinc-300"
+              placeholder="Short description for SEO (optional, max 255 chars)"
+              className="w-full text-base border-0 bg-transparent px-0 py-1 focus:outline-none text-gray-500 dark:text-zinc-400 placeholder:text-gray-300 dark:placeholder:text-zinc-600"
             />
           </div>
-          <div>
-            <label className="text-xs font-medium text-gray-500 dark:text-zinc-400 mb-1 block">
-              Content (Markdown)
-            </label>
-            <textarea
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              rows={30}
-              className="w-full font-mono text-sm border rounded-lg border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-900 p-4 focus:outline-none focus:border-blue-500 dark:text-zinc-200 resize-y"
+          <div className="sticky top-[53px] z-10 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b border-gray-100 dark:border-zinc-800 -mx-6 px-6 py-2">
+            <EditorToolbar editorView={editorView} />
+          </div>
+          <div className="min-h-[400px]">
+            <Editor
+              content={editContent}
+              onSaveContent={(updatedContent) => {
+                setEditContent(updatedContent);
+              }}
+              status="idle"
+              isCurrentVersion={true}
+              currentVersionIndex={0}
+              suggestions={[]}
+              onEditorReady={(view) => setEditorView(view)}
             />
           </div>
         </div>
