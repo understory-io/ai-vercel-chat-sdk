@@ -157,3 +157,37 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+export const apiKey = pgTable('ApiKey', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  keyHash: varchar('keyHash', { length: 64 }).notNull(),
+  keyPrefix: varchar('keyPrefix', { length: 8 }).notNull(),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  expiresAt: timestamp('expiresAt'),
+  lastUsedAt: timestamp('lastUsedAt'),
+  revokedAt: timestamp('revokedAt'),
+});
+
+export type ApiKey = InferSelectModel<typeof apiKey>;
+
+export const articleDraft = pgTable('ArticleDraft', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  content: text('content').notNull(),
+  description: varchar('description', { length: 255 }),
+  status: varchar('status', { enum: ['draft', 'published', 'discarded'] })
+    .notNull()
+    .default('draft'),
+  intercomArticleId: varchar('intercomArticleId', { length: 255 }),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+});
+
+export type ArticleDraft = InferSelectModel<typeof articleDraft>;
