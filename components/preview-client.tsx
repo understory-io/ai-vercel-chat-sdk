@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/toast';
+import { CollectionSelectorModal } from '@/components/collection-selector-modal';
+import { Loader2, ChevronRight, Folder } from 'lucide-react';
 
 interface DraftData {
   id: string;
@@ -14,6 +16,23 @@ interface DraftData {
   updatedAt: string;
   intercomArticleId: string | null;
 }
+
+interface IntercomAdmin {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface Collection {
+  id: string;
+  name: string;
+  description?: string;
+  parent_id: string | null;
+  children: Collection[];
+}
+
+// Session cache for admins (avoids re-fetching on every dialog open)
+let adminsCache: IntercomAdmin[] | null = null;
 
 export function PreviewClient({
   initialDraft,
@@ -28,14 +47,22 @@ export function PreviewClient({
     draft.description || '',
   );
   const [saving, setSaving] = useState(false);
-  const [publishing, setPublishing] = useState(false);
   const [renderedHtml, setRenderedHtml] = useState('');
   const lastUpdatedAt = useRef(draft.updatedAt);
 
+  // Publish dialog state
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [collectionModalOpen, setCollectionModalOpen] = useState(false);
+  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
+  const [collectionPath, setCollectionPath] = useState<Collection[]>([]);
+  const [selectedAuthor, setSelectedAuthor] = useState<string>('');
+  const [admins, setAdmins] = useState<IntercomAdmin[]>([]);
+  const [isLoadingAdmins, setIsLoadingAdmins] = useState(false);
+  const [publishDescription, setPublishDescription] = useState('');
+
   // Render markdown to HTML client-side for preview
   const renderMarkdown = useCallback(async (content: string) => {
-    // Simple markdown rendering - use the server for accurate rendering
-    // For now, do basic conversion
     const lines = content.split('\n');
     let html = '';
     let inList = false;
@@ -70,8 +97,7 @@ export function PreviewClient({
     renderMarkdown(draft.content).then(setRenderedHtml);
   }, [draft.content, renderMarkdown]);
 
-  // Poll for changes only when the URL has ?watch=true (set by the skill)
-  // This avoids constant polling during normal browsing
+  // Poll for changes only when the URL has ?watch=true
   const [watching, setWatching] = useState(false);
 
   useEffect(() => {
@@ -102,6 +128,34 @@ export function PreviewClient({
 
     return () => clearInterval(interval);
   }, [draft.id, draft.status, editing, watching]);
+
+  // Load admins when publish dialog opens
+  useEffect(() => {
+    if (!publishDialogOpen) return;
+
+    // Pre-fill description from draft
+    setPublishDescription(draft.description || '');
+
+    if (adminsCache) {
+      setAdmins(adminsCache);
+      return;
+    }
+
+    setIsLoadingAdmins(true);
+    fetch('/api/intercom/admins')
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          const fetched = data.admins || [];
+          adminsCache = fetched;
+          setAdmins(fetched);
+        }
+      })
+      .catch(() => {
+        toast({ type: 'error', description: 'Failed to load authors' });
+      })
+      .finally(() => setIsLoadingAdmins(false));
+  }, [publishDialogOpen, draft.description]);
 
   async function handleSave() {
     setSaving(true);
@@ -136,15 +190,39 @@ export function PreviewClient({
     }
   }
 
+  function openPublishDialog() {
+    setSelectedCollection(null);
+    setCollectionPath([]);
+    setSelectedAuthor('');
+    setPublishDescription(draft.description || '');
+    setPublishDialogOpen(true);
+  }
+
   async function handlePublish() {
+    if (!selectedCollection) {
+      toast({ type: 'error', description: 'Please select a collection' });
+      return;
+    }
+    if (!selectedAuthor) {
+      toast({ type: 'error', description: 'Please select an author' });
+      return;
+    }
+
     setPublishing(true);
     try {
       const res = await fetch(`/api/drafts/${draft.id}/publish`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          collectionId: selectedCollection.id,
+          authorId: selectedAuthor,
+          description: publishDescription || undefined,
+        }),
       });
       if (res.ok) {
         const data = await res.json();
         setDraft({ ...draft, status: 'published' });
+        setPublishDialogOpen(false);
         toast({
           type: 'success',
           description: 'Article published to Intercom!',
@@ -234,10 +312,9 @@ export function PreviewClient({
                 </Button>
                 <Button
                   size="sm"
-                  onClick={handlePublish}
-                  disabled={publishing}
+                  onClick={openPublishDialog}
                 >
-                  {publishing ? 'Publishing...' : 'Publish to Intercom'}
+                  Publish to Intercom
                 </Button>
               </>
             )}
@@ -263,6 +340,152 @@ export function PreviewClient({
           </div>
         </div>
       </div>
+
+      {/* Publish dialog */}
+      {publishDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setPublishDialogOpen(false)}
+          />
+          <div className="relative bg-white dark:bg-zinc-900 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold dark:text-zinc-50">
+                Publish to Intercom
+              </h2>
+              <button
+                onClick={() => setPublishDialogOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Collection selector */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">
+                Collection
+              </label>
+              <button
+                type="button"
+                onClick={() => setCollectionModalOpen(true)}
+                className="w-full flex items-center gap-3 p-3 border rounded-lg text-left hover:bg-gray-50 dark:hover:bg-zinc-800 dark:border-zinc-700 transition-colors"
+              >
+                <Folder className="size-4 text-gray-400 shrink-0" />
+                {selectedCollection ? (
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm dark:text-zinc-100 truncate">
+                      {selectedCollection.name}
+                    </p>
+                    {collectionPath.length > 0 && (
+                      <p className="text-xs text-gray-500 dark:text-zinc-400 flex items-center gap-0.5 truncate">
+                        {collectionPath.map((c, i) => (
+                          <span key={c.id} className="flex items-center gap-0.5">
+                            {i > 0 && <ChevronRight className="size-3" />}
+                            {c.name}
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-sm text-gray-400 dark:text-zinc-500">
+                    Select collection...
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">
+                Description (optional)
+              </label>
+              <textarea
+                value={publishDescription}
+                onChange={(e) =>
+                  setPublishDescription(e.target.value.slice(0, 255))
+                }
+                placeholder="SEO-friendly summary (up to 255 characters)"
+                rows={3}
+                className="w-full text-sm border rounded-lg p-3 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+              <p className="text-xs text-gray-400 text-right">
+                {publishDescription.length}/255
+              </p>
+            </div>
+
+            {/* Author selector */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">
+                Author
+              </label>
+              {isLoadingAdmins ? (
+                <div className="flex items-center gap-2 py-2">
+                  <Loader2 className="size-4 animate-spin text-gray-400" />
+                  <span className="text-sm text-gray-400">Loading authors...</span>
+                </div>
+              ) : admins.length === 0 ? (
+                <p className="text-sm text-red-500">
+                  No admins found. Check Intercom configuration.
+                </p>
+              ) : (
+                <select
+                  value={selectedAuthor}
+                  onChange={(e) => setSelectedAuthor(e.target.value)}
+                  className="w-full text-sm border rounded-lg p-2.5 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select author...</option>
+                  {admins.map((admin) => (
+                    <option key={admin.id} value={admin.id}>
+                      {admin.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setPublishDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handlePublish}
+                disabled={
+                  publishing ||
+                  !selectedCollection ||
+                  !selectedAuthor
+                }
+              >
+                {publishing ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin mr-2" />
+                    Publishing...
+                  </>
+                ) : (
+                  'Publish'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Collection selector modal (reused from main app) */}
+      <CollectionSelectorModal
+        isOpen={collectionModalOpen}
+        onClose={() => setCollectionModalOpen(false)}
+        onSelect={(collection, path) => {
+          setSelectedCollection(collection);
+          setCollectionPath(path);
+        }}
+      />
 
       {/* Content */}
       {editing ? (

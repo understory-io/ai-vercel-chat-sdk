@@ -3,7 +3,7 @@ import { getArticleDraft, updateArticleDraft } from '@/lib/db/queries';
 import { markdownToHtml } from '@/lib/intercom/markdown-to-html';
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const authResult = await getAuthenticatedUser();
@@ -39,35 +39,53 @@ export async function POST(
     );
   }
 
-  // Convert markdown to HTML for Intercom
-  const htmlContent = await markdownToHtml(draft.content);
-
-  // Fetch admins to use first available as author
-  const adminsRes = await fetch('https://api.intercom.io/admins', {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
-      'Intercom-Version': '2.14',
-    },
-  });
-
+  // Parse optional body params for collection and author selection
+  let collectionId: string | undefined;
   let authorId: number | undefined;
-  if (adminsRes.ok) {
-    const adminsData = await adminsRes.json();
-    const admins = adminsData.admins || [];
-    if (admins.length > 0) {
-      authorId = admins[0].id;
+  let description: string | undefined;
+
+  try {
+    const body = await request.json();
+    collectionId = body.collectionId;
+    if (body.authorId) authorId = Number.parseInt(body.authorId);
+    if (body.description !== undefined) description = body.description;
+  } catch {
+    // Empty body is fine — we'll fall back to defaults
+  }
+
+  // Use description from body, or fall back to draft description
+  const finalDescription = (description ?? draft.description)?.slice(0, 255);
+
+  // If no author provided, fetch first available admin as fallback
+  if (!authorId) {
+    const adminsRes = await fetch('https://api.intercom.io/admins', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
+        'Intercom-Version': '2.14',
+      },
+    });
+
+    if (adminsRes.ok) {
+      const adminsData = await adminsRes.json();
+      const admins = adminsData.admins || [];
+      if (admins.length > 0) {
+        authorId = admins[0].id;
+      }
+    }
+
+    if (!authorId) {
+      return Response.json(
+        { error: 'No Intercom admin found to set as author' },
+        { status: 500 },
+      );
     }
   }
 
-  if (!authorId) {
-    return Response.json(
-      { error: 'No Intercom admin found to set as author' },
-      { status: 500 },
-    );
-  }
+  // Convert markdown to HTML for Intercom
+  const htmlContent = await markdownToHtml(draft.content);
 
-  // Create as draft in Intercom (not published — CS can review there too)
+  // Build article payload — always creates as draft in Intercom for CS review
   const articlePayload: Record<string, unknown> = {
     title: draft.title,
     body: htmlContent,
@@ -75,8 +93,14 @@ export async function POST(
     state: 'draft',
   };
 
-  if (draft.description) {
-    articlePayload.description = draft.description.slice(0, 255);
+  // Place in a collection if specified (help center article)
+  if (collectionId) {
+    articlePayload.parent_type = 'collection';
+    articlePayload.parent_id = Number.parseInt(collectionId);
+  }
+
+  if (finalDescription) {
+    articlePayload.description = finalDescription;
   }
 
   const response = await fetch('https://api.intercom.io/articles', {
