@@ -11,7 +11,7 @@ export function register() {
       globalThis.localStorage.getItem('__test');
     } catch {
       // @ts-ignore
-      delete globalThis.localStorage;
+      globalThis.localStorage = undefined;
     }
   }
 }

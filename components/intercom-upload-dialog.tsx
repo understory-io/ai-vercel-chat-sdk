@@ -96,7 +96,7 @@ function generateDefaultDescription(title: string, content: string): string {
 
   // Ensure focus phrase appears early for SEO
   const hasFocus = focus && candidate.toLowerCase().includes(focus.toLowerCase());
-  let result = hasFocus ? candidate : `${focus ? focus + ': ' : ''}${candidate}`.trim();
+  let result = hasFocus ? candidate : `${focus ? `${focus}: ` : ''}${candidate}`.trim();
 
   // Use active-voice cues when missing verbs (simple heuristic)
   if (!/[a-zA-Z]+\s+(to|for|lets|helps|learn|set|create|manage|troubleshoot|optimize)/i.test(result)) {
