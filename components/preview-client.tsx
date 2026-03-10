@@ -101,18 +101,36 @@ export function PreviewClient({
     renderMarkdown(draft.content).then(setRenderedHtml);
   }, [draft.content, renderMarkdown]);
 
-  // Poll for changes only when the URL has ?watch=true
+  // Poll for changes only when ?watch=true, tab is visible, and within timeout
   const [watching, setWatching] = useState(false);
+  const [tabVisible, setTabVisible] = useState(true);
+  const watchStarted = useRef<number>(0);
+  const WATCH_TIMEOUT_MS = 10 * 60 * 1000; // Stop polling after 10 minutes
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setWatching(params.has('watch'));
+    if (params.has('watch')) {
+      setWatching(true);
+      watchStarted.current = Date.now();
+    }
   }, []);
 
   useEffect(() => {
-    if (!watching || draft.status !== 'draft' || editing) return;
+    const handleVisibility = () => setTabVisible(!document.hidden);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (!watching || !tabVisible || draft.status !== 'draft' || editing) return;
 
     const interval = setInterval(async () => {
+      // Auto-stop after timeout
+      if (Date.now() - watchStarted.current > WATCH_TIMEOUT_MS) {
+        setWatching(false);
+        return;
+      }
+
       try {
         const res = await fetch(`/api/drafts/${draft.id}`);
         if (!res.ok) return;
@@ -131,7 +149,7 @@ export function PreviewClient({
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [draft.id, draft.status, editing, watching]);
+  }, [draft.id, draft.status, editing, watching, tabVisible]);
 
   // Load admins when publish dialog opens
   useEffect(() => {
