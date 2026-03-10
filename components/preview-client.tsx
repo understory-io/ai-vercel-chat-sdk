@@ -225,7 +225,7 @@ export function PreviewClient({
         setPublishDialogOpen(false);
         toast({
           type: 'success',
-          description: 'Article published to Intercom!',
+          description: 'Draft saved to Intercom!',
         });
         if (data.intercomUrl) {
           window.open(data.intercomUrl, '_blank');
@@ -234,7 +234,7 @@ export function PreviewClient({
         const err = await res.json().catch(() => ({}));
         toast({
           type: 'error',
-          description: err.error || 'Failed to publish',
+          description: err.error || 'Failed to save to Intercom',
         });
       }
     } finally {
@@ -281,7 +281,7 @@ export function PreviewClient({
               }`}
             >
               {draft.status === 'published'
-                ? 'Published'
+                ? 'Saved to Intercom'
                 : draft.status === 'discarded'
                   ? 'Discarded'
                   : 'Draft'}
@@ -314,7 +314,7 @@ export function PreviewClient({
                   size="sm"
                   onClick={openPublishDialog}
                 >
-                  Publish to Intercom
+                  Save draft to Intercom
                 </Button>
               </>
             )}
@@ -334,7 +334,7 @@ export function PreviewClient({
             )}
             {draft.status === 'published' && (
               <span className="text-sm text-green-600 dark:text-green-400">
-                Published to Intercom
+                Saved to Intercom
               </span>
             )}
           </div>
@@ -351,7 +351,7 @@ export function PreviewClient({
           <div className="relative bg-white dark:bg-zinc-900 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold dark:text-zinc-50">
-                Publish to Intercom
+                Save draft to Intercom
               </h2>
               <button
                 onClick={() => setPublishDialogOpen(false)}
@@ -466,10 +466,10 @@ export function PreviewClient({
                 {publishing ? (
                   <>
                     <Loader2 className="size-4 animate-spin mr-2" />
-                    Publishing...
+                    Saving...
                   </>
                 ) : (
-                  'Publish'
+                  'Save to Intercom'
                 )}
               </Button>
             </div>
