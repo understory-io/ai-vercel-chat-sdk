@@ -85,6 +85,43 @@ pnpm test                  # Run Playwright E2E tests
 - **Fix**: Preview components check `artifact.isVisible` to determine streaming state
 
 
+## MCP Server (Article Drafts)
+
+An MCP (Model Context Protocol) server is built into this app, allowing Claude Code to create and manage help center article drafts.
+
+### How it works
+- **URL**: `https://product-documentation-generator.vercel.app/api/mcp`
+- **Auth**: Google OAuth with `@understory.io` domain restriction
+- **Transport**: Stateless HTTP (POST only)
+
+### Setup for Claude Code users
+The MCP server is auto-configured via `.claude/settings.json` for anyone working in this repo. On first tool use, your browser opens for Google login — after that, tokens are cached automatically.
+
+To manually add it in other projects:
+```bash
+claude mcp add --transport http article-drafts https://product-documentation-generator.vercel.app/api/mcp
+```
+
+### Available tools
+| Tool | Description |
+|------|-------------|
+| `create_draft` | Create a new article draft (title, content, description) |
+| `list_drafts` | List your drafts, optionally filtered by status |
+| `get_draft` | Get a specific draft by ID |
+| `update_draft` | Update title, content, or description |
+| `publish_draft` | Publish to Intercom as a help center article |
+| `discard_draft` | Mark a draft as discarded |
+
+### Architecture
+- **OAuth 2.1 facade**: `/api/mcp/authorize`, `/api/mcp/callback`, `/api/mcp/token`, `/api/mcp/register`
+- **Discovery**: `/.well-known/oauth-protected-resource`, `/.well-known/oauth-authorization-server` (via Next.js rewrites)
+- **MCP handler**: `/api/mcp/route.ts` — validates JWT, creates stateless McpServer, dispatches tools
+- **Tools**: `lib/mcp/tools.ts` — 6 tools calling existing DB query functions
+- **JWT**: `lib/mcp/jwt.ts` — signed with `AUTH_SECRET`, 1h expiry, audience-scoped
+
+### Local development
+Set `NEXT_PUBLIC_APP_URL=http://localhost:3000` in `.env.local` and add the Google OAuth redirect URI `http://localhost:3000/api/mcp/callback` in Google Cloud Console.
+
 ## Environment Configuration
 
 ### Required Variables

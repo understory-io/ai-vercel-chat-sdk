@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "article-drafts": {
+      "type": "http",
+      "url": "https://product-documentation-generator.vercel.app/api/mcp"
+    }
+  }
+}
