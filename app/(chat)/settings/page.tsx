@@ -1,6 +1,5 @@
 import { auth } from '@/app/(auth)/auth';
 import { redirect } from 'next/navigation';
-import { ApiKeysManager } from '@/components/api-keys-manager';
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -14,10 +13,14 @@ export default async function SettingsPage() {
         <div>
           <h1 className="text-2xl font-semibold dark:text-zinc-50">Settings</h1>
           <p className="text-sm text-gray-500 dark:text-zinc-400 mt-1">
-            Manage your API keys for programmatic access
+            Account settings
           </p>
         </div>
-        <ApiKeysManager />
+        <div className="p-4 border rounded-lg dark:border-zinc-700">
+          <p className="text-sm dark:text-zinc-300">
+            Signed in as <span className="font-medium">{session.user.email}</span>
+          </p>
+        </div>
       </div>
     </div>
   );

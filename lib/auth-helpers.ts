@@ -2,26 +2,34 @@ import 'server-only';
 
 import { auth } from '@/app/(auth)/auth';
 import { headers } from 'next/headers';
+import { verifyAccessToken } from '@/lib/mcp/jwt';
+
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://product-documentation-generator.vercel.app';
 
 /**
- * Get the authenticated user ID from either NextAuth session or API key.
- * The API key user ID is injected by middleware via x-api-key-user-id header.
+ * Get the authenticated user ID from NextAuth session or MCP JWT Bearer token.
  */
 export async function getAuthenticatedUser(): Promise<{
   userId: string;
-  authMethod: 'session' | 'api-key';
+  authMethod: 'session' | 'mcp-jwt';
 } | null> {
-  // Check for API key auth (set by middleware)
-  const headerStore = await headers();
-  const apiKeyUserId = headerStore.get('x-api-key-user-id');
-  if (apiKeyUserId) {
-    return { userId: apiKeyUserId, authMethod: 'api-key' };
-  }
-
-  // Fall back to NextAuth session
+  // Try NextAuth session first
   const session = await auth();
   if (session?.user?.id) {
     return { userId: session.user.id, authMethod: 'session' };
+  }
+
+  // Fall back to MCP JWT Bearer token
+  const headerStore = await headers();
+  const authHeader = headerStore.get('Authorization');
+  if (authHeader?.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.slice(7);
+      const payload = await verifyAccessToken(token, `${BASE_URL}/api/mcp`);
+      return { userId: payload.sub, authMethod: 'mcp-jwt' };
+    } catch {
+      // Invalid token — fall through to null
+    }
   }
 
   return null;

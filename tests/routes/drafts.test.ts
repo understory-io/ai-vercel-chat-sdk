@@ -1,17 +1,15 @@
 import { expect, test } from '@playwright/test';
 import {
-  createTestUserWithApiKey,
+  createTestUserWithToken,
   createApiContext,
   cleanupTestUser,
 } from '../helpers-api';
 import type { APIRequestContext } from '@playwright/test';
 
 let aliceUserId: string;
-let aliceApiKey: string;
 let aliceRequest: APIRequestContext;
 
 let bobUserId: string;
-let bobApiKey: string;
 let bobRequest: APIRequestContext;
 
 // Draft IDs created during tests, for cross-test reference
@@ -19,15 +17,13 @@ let aliceDraftId: string;
 
 test.describe.serial('/api/drafts', () => {
   test.beforeAll(async ({ request }) => {
-    const alice = await createTestUserWithApiKey({ name: 'alice-drafts', request });
+    const alice = await createTestUserWithToken({ name: 'alice-drafts', request });
     aliceUserId = alice.userId;
-    aliceApiKey = alice.apiKey;
-    aliceRequest = await createApiContext(alice.apiKey);
+    aliceRequest = await createApiContext(alice.token);
 
-    const bob = await createTestUserWithApiKey({ name: 'bob-drafts', request });
+    const bob = await createTestUserWithToken({ name: 'bob-drafts', request });
     bobUserId = bob.userId;
-    bobApiKey = bob.apiKey;
-    bobRequest = await createApiContext(bob.apiKey);
+    bobRequest = await createApiContext(bob.token);
   });
 
   test.afterAll(async () => {

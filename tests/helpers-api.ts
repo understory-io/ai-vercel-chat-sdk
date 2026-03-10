@@ -1,32 +1,33 @@
 import { type APIRequestContext, request as playwrightRequest } from '@playwright/test';
-import crypto from 'node:crypto';
+import { SignJWT } from 'jose';
 
 const baseURL = `http://localhost:${process.env.PORT || 3000}`;
 
+function getSigningKey(): Uint8Array {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) throw new Error('AUTH_SECRET is not set for tests');
+  return new TextEncoder().encode(secret);
+}
+
 /**
- * Creates a test user directly in the database and generates an API key.
- * Returns the API key plaintext for use in Authorization headers.
- *
- * This bypasses Google OAuth entirely, which is exactly what we need
- * for testing API key authentication end-to-end.
+ * Creates a test user directly in the database and generates a JWT access token.
+ * Returns the JWT for use in Authorization headers.
  */
-export async function createTestUserWithApiKey(opts: {
+export async function createTestUserWithToken(opts: {
   name: string;
   request: APIRequestContext;
 }): Promise<{
   userId: string;
-  apiKey: string;
-  keyId: string;
+  token: string;
 }> {
-  // We use a raw SQL endpoint isn't available, so we seed directly
-  // via the postgres client. Import dynamically to avoid 'server-only' issues.
   const postgres = (await import('postgres')).default;
+  // biome-ignore lint: Forbidden non-null assertion.
   const sql = postgres(process.env.POSTGRES_URL!);
 
   try {
     const email = `test-${opts.name}-${Date.now()}@test.playwright.io`;
 
-    // 1. Create user directly in DB
+    // Create user directly in DB
     const [dbUser] = await sql`
       INSERT INTO "User" ("email", "name")
       VALUES (${email}, ${opts.name})
@@ -35,88 +36,33 @@ export async function createTestUserWithApiKey(opts: {
 
     const userId = dbUser.id;
 
-    // 2. Generate an API key
-    const randomBytes = crypto.randomBytes(32);
-    const plainKey = `sk_${randomBytes.toString('base64url').slice(0, 45)}`;
-    const keyHash = crypto.createHash('sha256').update(plainKey).digest('hex');
-    const keyPrefix = plainKey.slice(0, 8);
+    // Generate a JWT access token for MCP auth
+    const token = await new SignJWT({ scope: 'drafts' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(userId)
+      .setIssuer(baseURL)
+      .setAudience(`${baseURL}/api/mcp`)
+      .setIssuedAt()
+      .setExpirationTime('1h')
+      .sign(getSigningKey());
 
-    // 3. Store hashed key in DB
-    const [keyRecord] = await sql`
-      INSERT INTO "ApiKey" ("userId", "name", "keyHash", "keyPrefix")
-      VALUES (${userId}, ${'test-key'}, ${keyHash}, ${keyPrefix})
-      RETURNING "id"
-    `;
-
-    return {
-      userId,
-      apiKey: plainKey,
-      keyId: keyRecord.id,
-    };
+    return { userId, token };
   } finally {
     await sql.end();
   }
 }
 
 /**
- * Creates an API request context with an API key in the Authorization header.
+ * Creates an API request context with a JWT in the Authorization header.
  */
-export async function createApiContext(apiKey: string): Promise<APIRequestContext> {
+export async function createApiContext(token: string): Promise<APIRequestContext> {
   return playwrightRequest.newContext({
     baseURL,
     extraHTTPHeaders: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
   });
-}
-
-/**
- * Creates a revoked API key for a user (for testing revoked key rejection).
- */
-export async function createRevokedApiKey(userId: string): Promise<string> {
-  const postgres = (await import('postgres')).default;
-  const sql = postgres(process.env.POSTGRES_URL!);
-
-  try {
-    const randomBytes = crypto.randomBytes(32);
-    const plainKey = `sk_${randomBytes.toString('base64url').slice(0, 45)}`;
-    const keyHash = crypto.createHash('sha256').update(plainKey).digest('hex');
-    const keyPrefix = plainKey.slice(0, 8);
-
-    await sql`
-      INSERT INTO "ApiKey" ("userId", "name", "keyHash", "keyPrefix", "revokedAt")
-      VALUES (${userId}, ${'revoked-test-key'}, ${keyHash}, ${keyPrefix}, NOW())
-    `;
-
-    return plainKey;
-  } finally {
-    await sql.end();
-  }
-}
-
-/**
- * Creates an expired API key for a user (for testing expired key rejection).
- */
-export async function createExpiredApiKey(userId: string): Promise<string> {
-  const postgres = (await import('postgres')).default;
-  const sql = postgres(process.env.POSTGRES_URL!);
-
-  try {
-    const randomBytes = crypto.randomBytes(32);
-    const plainKey = `sk_${randomBytes.toString('base64url').slice(0, 45)}`;
-    const keyHash = crypto.createHash('sha256').update(plainKey).digest('hex');
-    const keyPrefix = plainKey.slice(0, 8);
-
-    await sql`
-      INSERT INTO "ApiKey" ("userId", "name", "keyHash", "keyPrefix", "expiresAt")
-      VALUES (${userId}, ${'expired-test-key'}, ${keyHash}, ${keyPrefix}, NOW() - INTERVAL '1 day')
-    `;
-
-    return plainKey;
-  } finally {
-    await sql.end();
-  }
 }
 
 /**
@@ -124,11 +70,10 @@ export async function createExpiredApiKey(userId: string): Promise<string> {
  */
 export async function cleanupTestUser(userId: string): Promise<void> {
   const postgres = (await import('postgres')).default;
+  // biome-ignore lint: Forbidden non-null assertion.
   const sql = postgres(process.env.POSTGRES_URL!);
 
   try {
-    // Cascade deletes handle ApiKey and ArticleDraft via FK
-    await sql`DELETE FROM "ApiKey" WHERE "userId" = ${userId}`;
     await sql`DELETE FROM "ArticleDraft" WHERE "userId" = ${userId}`;
     await sql`DELETE FROM "User" WHERE "id" = ${userId}`;
   } finally {

@@ -158,21 +158,50 @@ export const stream = pgTable(
 
 export type Stream = InferSelectModel<typeof stream>;
 
-export const apiKey = pgTable('ApiKey', {
+// MCP OAuth tables
+
+export const mcpOAuthClient = pgTable('McpOAuthClient', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
+  clientId: varchar('clientId', { length: 255 }).notNull().unique(),
+  clientName: varchar('clientName', { length: 255 }).notNull(),
+  redirectUris: json('redirectUris').$type<string[]>().notNull().default([]),
+  grantTypes: json('grantTypes').$type<string[]>().notNull().default(['authorization_code']),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+});
+
+export type McpOAuthClient = InferSelectModel<typeof mcpOAuthClient>;
+
+export const mcpAuthCode = pgTable('McpAuthCode', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  code: varchar('code', { length: 255 }).notNull().unique(),
+  clientId: varchar('clientId', { length: 255 }).notNull(),
+  userId: uuid('userId').references(() => user.id),
+  redirectUri: text('redirectUri').notNull(),
+  codeChallenge: text('codeChallenge').notNull(),
+  resource: text('resource'),
+  scope: varchar('scope', { length: 255 }),
+  state: text('state'),
+  expiresAt: timestamp('expiresAt').notNull(),
+  usedAt: timestamp('usedAt'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+});
+
+export type McpAuthCode = InferSelectModel<typeof mcpAuthCode>;
+
+export const mcpRefreshToken = pgTable('McpRefreshToken', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  tokenHash: varchar('tokenHash', { length: 64 }).notNull(),
   userId: uuid('userId')
     .notNull()
     .references(() => user.id, { onDelete: 'cascade' }),
-  name: varchar('name', { length: 255 }).notNull(),
-  keyHash: varchar('keyHash', { length: 64 }).notNull(),
-  keyPrefix: varchar('keyPrefix', { length: 8 }).notNull(),
-  createdAt: timestamp('createdAt').notNull().defaultNow(),
-  expiresAt: timestamp('expiresAt'),
-  lastUsedAt: timestamp('lastUsedAt'),
+  clientId: varchar('clientId', { length: 255 }).notNull(),
+  scope: varchar('scope', { length: 255 }),
+  expiresAt: timestamp('expiresAt').notNull(),
   revokedAt: timestamp('revokedAt'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
 });
 
-export type ApiKey = InferSelectModel<typeof apiKey>;
+export type McpRefreshToken = InferSelectModel<typeof mcpRefreshToken>;
 
 export const articleDraft = pgTable('ArticleDraft', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),

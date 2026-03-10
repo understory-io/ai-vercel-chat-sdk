@@ -1,15 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { isDevelopmentEnvironment } from './lib/constants';
-import { validateApiKeyFromDb } from './lib/db/middleware-queries';
-
-async function hashApiKeyInMiddleware(key: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(key);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -27,6 +18,16 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow MCP routes to pass through — they handle their own JWT auth
+  if (pathname.startsWith('/api/mcp')) {
+    return NextResponse.next();
+  }
+
+  // Allow OAuth discovery endpoints (both original and rewritten paths)
+  if (pathname.startsWith('/.well-known/') || pathname.startsWith('/api/well-known/')) {
+    return NextResponse.next();
+  }
+
   // Check NextAuth JWT token first
   const token = await getToken({
     req: request,
@@ -41,33 +42,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // No JWT session. For API routes, try API key authentication.
+  // No JWT session — for API routes with Bearer tokens, let route handlers validate
   if (pathname.startsWith('/api/')) {
     const authHeader = request.headers.get('Authorization');
     if (authHeader?.startsWith('Bearer ')) {
-      const apiKeyPlaintext = authHeader.slice(7);
-      const keyHash = await hashApiKeyInMiddleware(apiKeyPlaintext);
-
-      const apiKeyRecord = await validateApiKeyFromDb(keyHash);
-      if (apiKeyRecord) {
-        // Pass user identity to route handlers via headers.
-        // Safe: Next.js middleware rewrites headers before they reach handlers.
-        const requestHeaders = new Headers(request.headers);
-        requestHeaders.set('x-api-key-user-id', apiKeyRecord.userId);
-        requestHeaders.set('x-api-key-id', apiKeyRecord.id);
-
-        return NextResponse.next({
-          request: { headers: requestHeaders },
-        });
-      }
-
-      return new Response(JSON.stringify({ error: 'Invalid API key' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' },
-      });
+      return NextResponse.next();
     }
 
-    // No auth at all on API routes
     return new Response(JSON.stringify({ error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
