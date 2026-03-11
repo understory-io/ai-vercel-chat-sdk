@@ -29,6 +29,7 @@ export async function POST(
     status: 'draft',
     reviewedBy: authResult.userId,
     reviewedAt: new Date(),
+    reviewResult: 'changes_requested',
     submittedAt: null,
   });
 

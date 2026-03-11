@@ -10,6 +10,7 @@ import {
   gte,
   inArray,
   lt,
+  sql,
   type SQL,
 } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -617,6 +618,7 @@ export async function updateArticleDraft({
   submittedAt,
   reviewedBy,
   reviewedAt,
+  reviewResult,
 }: {
   id: string;
   title?: string;
@@ -627,6 +629,7 @@ export async function updateArticleDraft({
   submittedAt?: Date | null;
   reviewedBy?: string | null;
   reviewedAt?: Date | null;
+  reviewResult?: 'approved' | 'changes_requested' | null;
 }) {
   try {
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -639,6 +642,7 @@ export async function updateArticleDraft({
     if (submittedAt !== undefined) updates.submittedAt = submittedAt;
     if (reviewedBy !== undefined) updates.reviewedBy = reviewedBy;
     if (reviewedAt !== undefined) updates.reviewedAt = reviewedAt;
+    if (reviewResult !== undefined) updates.reviewResult = reviewResult;
 
     const [result] = await db
       .update(articleDraft)
@@ -667,6 +671,8 @@ export async function getArticleDraftsPendingReview() {
         createdAt: articleDraft.createdAt,
         authorName: user.name,
         authorEmail: user.email,
+        reviewResult: articleDraft.reviewResult,
+        reviewedAt: articleDraft.reviewedAt,
       })
       .from(articleDraft)
       .innerJoin(user, eq(articleDraft.userId, user.id))
@@ -676,6 +682,39 @@ export async function getArticleDraftsPendingReview() {
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to get pending review drafts',
+    );
+  }
+}
+
+export async function getArticleDraftsForReviewDashboard() {
+  try {
+    // All articles that have ever been submitted for review
+    // (submittedAt is set OR status is pending_review/published, OR reviewResult is set)
+    return await db
+      .select({
+        id: articleDraft.id,
+        title: articleDraft.title,
+        description: articleDraft.description,
+        status: articleDraft.status,
+        userId: articleDraft.userId,
+        submittedAt: articleDraft.submittedAt,
+        createdAt: articleDraft.createdAt,
+        updatedAt: articleDraft.updatedAt,
+        authorName: user.name,
+        authorEmail: user.email,
+        reviewResult: articleDraft.reviewResult,
+        reviewedAt: articleDraft.reviewedAt,
+      })
+      .from(articleDraft)
+      .innerJoin(user, eq(articleDraft.userId, user.id))
+      .where(
+        sql`${articleDraft.submittedAt} IS NOT NULL OR ${articleDraft.status} IN ('pending_review', 'published') OR ${articleDraft.reviewResult} IS NOT NULL`,
+      )
+      .orderBy(desc(articleDraft.updatedAt));
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get review dashboard drafts',
     );
   }
 }

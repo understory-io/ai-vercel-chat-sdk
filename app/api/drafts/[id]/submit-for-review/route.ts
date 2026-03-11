@@ -48,8 +48,8 @@ export async function POST(
     process.env.NEXT_PUBLIC_APP_URL ||
     'https://product-documentation-generator.vercel.app';
 
-  // Notify CS in Slack (fire-and-forget)
-  notifySlackForReview({
+  // Notify CS in Slack
+  await notifySlackForReview({
     title: draft.title,
     submittedBy: authResult.userEmail ?? authResult.userId,
     reviewUrl: `${baseUrl}/preview/${draft.id}`,
