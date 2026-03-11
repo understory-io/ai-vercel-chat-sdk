@@ -9,8 +9,9 @@ import {
   gt,
   gte,
   inArray,
+  isNotNull,
   lt,
-  sql,
+  or,
   type SQL,
 } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -708,7 +709,12 @@ export async function getArticleDraftsForReviewDashboard() {
       .from(articleDraft)
       .innerJoin(user, eq(articleDraft.userId, user.id))
       .where(
-        sql`${articleDraft.submittedAt} IS NOT NULL OR ${articleDraft.status} IN ('pending_review', 'published') OR ${articleDraft.reviewResult} IS NOT NULL`,
+        or(
+          isNotNull(articleDraft.submittedAt),
+          eq(articleDraft.status, 'pending_review'),
+          eq(articleDraft.status, 'published'),
+          isNotNull(articleDraft.reviewResult),
+        ),
       )
       .orderBy(desc(articleDraft.updatedAt));
   } catch (error) {
