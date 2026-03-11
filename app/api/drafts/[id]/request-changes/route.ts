@@ -1,8 +1,11 @@
 import { getAuthenticatedUser } from '@/lib/auth-helpers';
-import { getArticleDraft, updateArticleDraft } from '@/lib/db/queries';
+import { db, getArticleDraft, updateArticleDraft } from '@/lib/db/queries';
+import { user as userTable } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { notifyAuthorChangesRequested } from '@/lib/slack/notify-author';
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const authResult = await getAuthenticatedUser();
@@ -24,6 +27,14 @@ export async function POST(
     );
   }
 
+  let note: string | undefined;
+  try {
+    const body = await request.json();
+    if (body.note) note = body.note;
+  } catch {
+    // Empty body is fine
+  }
+
   await updateArticleDraft({
     id: draft.id,
     status: 'draft',
@@ -32,6 +43,26 @@ export async function POST(
     reviewResult: 'changes_requested',
     submittedAt: null,
   });
+
+  // Look up author email and reviewer name, then notify via Slack DM
+  const [author] = await db
+    .select({ email: userTable.email })
+    .from(userTable)
+    .where(eq(userTable.id, draft.userId));
+
+  if (author?.email) {
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      'https://product-documentation-generator.vercel.app';
+
+    await notifyAuthorChangesRequested({
+      authorEmail: author.email,
+      articleTitle: draft.title,
+      reviewUrl: `${baseUrl}/preview/${draft.id}`,
+      note,
+      reviewerName: authResult.userEmail ?? undefined,
+    });
+  }
 
   return Response.json({ success: true, status: 'draft' });
 }
