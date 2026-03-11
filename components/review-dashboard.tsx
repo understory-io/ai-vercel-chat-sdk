@@ -104,13 +104,20 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-export function ReviewDashboard({ drafts }: { drafts: ReviewDraft[] }) {
+export function ReviewDashboard({
+  drafts,
+  currentUserId,
+}: {
+  drafts: ReviewDraft[];
+  currentUserId: string;
+}) {
   const pending = drafts.filter((d) => d.status === 'pending_review');
   const approved = drafts.filter((d) => d.status === 'published');
   const changesRequested = drafts.filter(
     (d) => d.reviewResult === 'changes_requested' && d.status === 'draft',
   );
   const discarded = drafts.filter((d) => d.status === 'discarded');
+  const mine = drafts.filter((d) => d.userId === currentUserId);
 
   return (
     <div className="flex flex-col h-full">
@@ -160,6 +167,14 @@ export function ReviewDashboard({ drafts }: { drafts: ReviewDraft[] }) {
               {discarded.length > 0 && (
                 <span className="ml-1.5 text-xs opacity-60">
                   {discarded.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="mine">
+              My Articles
+              {mine.length > 0 && (
+                <span className="ml-1.5 text-xs opacity-60">
+                  {mine.length}
                 </span>
               )}
             </TabsTrigger>
@@ -219,6 +234,18 @@ export function ReviewDashboard({ drafts }: { drafts: ReviewDraft[] }) {
             ) : (
               <div className="space-y-3 mt-2">
                 {discarded.map((draft) => (
+                  <ArticleCard key={draft.id} draft={draft} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="mine">
+            {mine.length === 0 ? (
+              <EmptyState message="You haven't submitted any articles yet" />
+            ) : (
+              <div className="space-y-3 mt-2">
+                {mine.map((draft) => (
                   <ArticleCard key={draft.id} draft={draft} />
                 ))}
               </div>

@@ -11,5 +11,5 @@ export default async function ReviewsPage() {
 
   const drafts = await getArticleDraftsForReviewDashboard();
 
-  return <ReviewDashboard drafts={drafts} />;
+  return <ReviewDashboard drafts={drafts} currentUserId={session.user.id} />;
 }
