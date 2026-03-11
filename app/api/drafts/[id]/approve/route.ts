@@ -141,6 +141,7 @@ export async function POST(
     intercomArticleId: String(articleData.id),
     reviewedBy: authResult.userId,
     reviewedAt: new Date(),
+    reviewResult: 'approved',
   });
 
   return Response.json({

@@ -459,7 +459,7 @@ export function PreviewClient({
               </>
             )}
             {/* Reviewer actions for pending_review */}
-            {isPendingReview && !isAuthor && currentUserId && (
+            {isPendingReview && currentUserId && (
               <>
                 <Button
                   variant="outline"

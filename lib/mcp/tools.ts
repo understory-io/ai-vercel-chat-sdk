@@ -249,8 +249,8 @@ export function registerTools(server: McpServer, userId: string) {
         .from(userTable)
         .where(eq(userTable.id, userId));
 
-      // Notify CS in Slack (fire-and-forget)
-      notifySlackForReview({
+      // Notify CS in Slack
+      await notifySlackForReview({
         title: draft.title,
         submittedBy: dbUser?.email ?? userId,
         reviewUrl,

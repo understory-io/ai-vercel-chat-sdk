@@ -1,6 +1,6 @@
 import { auth } from '@/app/(auth)/auth';
 import { redirect } from 'next/navigation';
-import { getArticleDraftsPendingReview } from '@/lib/db/queries';
+import { getArticleDraftsForReviewDashboard } from '@/lib/db/queries';
 import { ReviewDashboard } from '@/components/review-dashboard';
 
 export default async function ReviewsPage() {
@@ -9,7 +9,7 @@ export default async function ReviewsPage() {
     redirect('/login');
   }
 
-  const drafts = await getArticleDraftsPendingReview();
+  const drafts = await getArticleDraftsForReviewDashboard();
 
-  return <ReviewDashboard drafts={drafts} />;
+  return <ReviewDashboard drafts={drafts} currentUserId={session.user.id} />;
 }

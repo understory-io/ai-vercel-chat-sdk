@@ -231,6 +231,9 @@ export const articleDraft = pgTable('ArticleDraft', {
   submittedAt: timestamp('submittedAt'),
   reviewedBy: uuid('reviewedBy').references(() => user.id),
   reviewedAt: timestamp('reviewedAt'),
+  reviewResult: varchar('reviewResult', {
+    enum: ['approved', 'changes_requested'],
+  }),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 });
