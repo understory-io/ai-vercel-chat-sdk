@@ -8,9 +8,17 @@ const textPartSchema = z.object({
 const filePartSchema = z.object({
   type: z.enum(['file']),
   mediaType: z.enum([
-    'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-    'application/pdf', 'text/plain', 'text/markdown', 'application/json', 'text/csv',
-    'application/intercom'
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'image/svg+xml',
+    'application/pdf',
+    'text/plain',
+    'text/markdown',
+    'application/json',
+    'text/csv',
+    'application/intercom',
   ]),
   name: z.string().min(1).max(100),
   url: z.string().url().optional(),

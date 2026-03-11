@@ -28,9 +28,9 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: 'pageIds array is required',
-          timestamp: Date.now()
+          timestamp: Date.now(),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -40,9 +40,9 @@ export async function POST(request: NextRequest) {
         {
           success: false,
           error: 'Maximum 10 pages allowed per batch',
-          timestamp: Date.now()
+          timestamp: Date.now(),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -54,29 +54,31 @@ export async function POST(request: NextRequest) {
           return {
             id: pageId,
             content,
-            status: 'success'
+            status: 'success',
           };
         } catch (error) {
           console.error(`Failed to fetch content for page ${pageId}:`, error);
           return {
             id: pageId,
             status: 'error',
-            error: error instanceof Error ? error.message : 'Unknown error'
+            error: error instanceof Error ? error.message : 'Unknown error',
           };
         }
-      })
-    ).then(results => 
-      results.map(result => 
-        result.status === 'fulfilled' ? result.value : {
-          id: 'unknown',
-          status: 'error' as const,
-          error: 'Promise rejected'
-        }
-      )
+      }),
+    ).then((results) =>
+      results.map((result) =>
+        result.status === 'fulfilled'
+          ? result.value
+          : {
+              id: 'unknown',
+              status: 'error' as const,
+              error: 'Promise rejected',
+            },
+      ),
     );
 
-    const successCount = results.filter(r => r.status === 'success').length;
-    const errorCount = results.filter(r => r.status === 'error').length;
+    const successCount = results.filter((r) => r.status === 'success').length;
+    const errorCount = results.filter((r) => r.status === 'error').length;
 
     return NextResponse.json({
       success: true,
@@ -85,20 +87,20 @@ export async function POST(request: NextRequest) {
       meta: {
         total: pageIds.length,
         successful: successCount,
-        failed: errorCount
-      }
+        failed: errorCount,
+      },
     });
-
   } catch (error) {
     console.error('Content API error:', error);
-    
+
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch content',
-        timestamp: Date.now()
+        error:
+          error instanceof Error ? error.message : 'Failed to fetch content',
+        timestamp: Date.now(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

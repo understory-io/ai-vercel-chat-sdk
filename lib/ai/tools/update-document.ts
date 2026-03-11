@@ -16,7 +16,10 @@ export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
     inputSchema: z.object({
       id: z.string().describe('The ID of the document to update'),
       content: z.string().describe('The complete new content for the document'),
-      title: z.string().optional().describe('Optional new title for the document'),
+      title: z
+        .string()
+        .optional()
+        .describe('Optional new title for the document'),
     }),
     execute: async ({ id, content, title }) => {
       const document = await getDocumentById({ id });

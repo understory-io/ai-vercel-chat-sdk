@@ -67,9 +67,7 @@ export function PreviewActions({
   }
 
   if (currentStatus === 'discarded') {
-    return (
-      <span className="text-sm text-gray-400">Discarded</span>
-    );
+    return <span className="text-sm text-gray-400">Discarded</span>;
   }
 
   return (
@@ -83,11 +81,7 @@ export function PreviewActions({
       >
         {discarding ? 'Discarding...' : 'Discard'}
       </Button>
-      <Button
-        size="sm"
-        onClick={handlePublish}
-        disabled={publishing}
-      >
+      <Button size="sm" onClick={handlePublish} disabled={publishing}>
         {publishing ? 'Publishing...' : 'Publish to Intercom'}
       </Button>
     </div>

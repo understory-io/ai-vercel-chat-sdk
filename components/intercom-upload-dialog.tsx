@@ -63,10 +63,38 @@ function getFocusPhrase(title: string): string {
   const cleaned = base.replace(/[\p{P}\p{S}]+/gu, ' ');
   const words = cleaned.split(/\s+/).filter(Boolean);
   const stop = new Set([
-    'the','a','an','and','or','for','of','to','in','on','with','by','from','as','at','is','are','be','your','you','how','what','why','when','guide'
+    'the',
+    'a',
+    'an',
+    'and',
+    'or',
+    'for',
+    'of',
+    'to',
+    'in',
+    'on',
+    'with',
+    'by',
+    'from',
+    'as',
+    'at',
+    'is',
+    'are',
+    'be',
+    'your',
+    'you',
+    'how',
+    'what',
+    'why',
+    'when',
+    'guide',
   ]);
-  const focus = words.filter(w => !stop.has(w.toLowerCase()) && w.length > 2).slice(0, 8);
-  const phrase = (focus.length ? focus.join(' ') : words.slice(0, 8).join(' ')).trim();
+  const focus = words
+    .filter((w) => !stop.has(w.toLowerCase()) && w.length > 2)
+    .slice(0, 8);
+  const phrase = (
+    focus.length ? focus.join(' ') : words.slice(0, 8).join(' ')
+  ).trim();
   return phrase;
 }
 
@@ -95,11 +123,18 @@ function generateDefaultDescription(title: string, content: string): string {
   }
 
   // Ensure focus phrase appears early for SEO
-  const hasFocus = focus && candidate.toLowerCase().includes(focus.toLowerCase());
-  let result = hasFocus ? candidate : `${focus ? `${focus}: ` : ''}${candidate}`.trim();
+  const hasFocus =
+    focus && candidate.toLowerCase().includes(focus.toLowerCase());
+  let result = hasFocus
+    ? candidate
+    : `${focus ? `${focus}: ` : ''}${candidate}`.trim();
 
   // Use active-voice cues when missing verbs (simple heuristic)
-  if (!/[a-zA-Z]+\s+(to|for|lets|helps|learn|set|create|manage|troubleshoot|optimize)/i.test(result)) {
+  if (
+    !/[a-zA-Z]+\s+(to|for|lets|helps|learn|set|create|manage|troubleshoot|optimize)/i.test(
+      result,
+    )
+  ) {
     result = result.replace(/^([A-Za-z].*?)$/u, (m) => `Learn about ${m}`);
   }
 
@@ -115,16 +150,19 @@ export function IntercomUploadDialog({
   title,
   content,
 }: IntercomUploadDialogProps) {
-  const [articleType, setArticleType] = useState<'helpcenter' | 'internal' | ''>('');
+  const [articleType, setArticleType] = useState<
+    'helpcenter' | 'internal' | ''
+  >('');
   const [articleTitle, setArticleTitle] = useState(title);
   const [selectedAuthor, setSelectedAuthor] = useState<string>('');
   const [admins, setAdmins] = useState<IntercomAdmin[]>([]);
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [adminsFetchError, setAdminsFetchError] = useState<string | null>(null);
-  
+
   // Help center specific fields
-  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
+  const [selectedCollection, setSelectedCollection] =
+    useState<Collection | null>(null);
   const [collectionPath, setCollectionPath] = useState<Collection[]>([]);
   const [articleDescription, setArticleDescription] = useState('');
   const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
@@ -164,7 +202,13 @@ export function IntercomUploadDialog({
         setHasPrefilledDescription(true);
       }
     }
-  }, [articleType, hasPrefilledDescription, articleDescription, articleTitle, content]);
+  }, [
+    articleType,
+    hasPrefilledDescription,
+    articleDescription,
+    articleTitle,
+    content,
+  ]);
 
   const loadAdmins = async () => {
     // Use cached admins if available
@@ -180,9 +224,11 @@ export function IntercomUploadDialog({
       if (response.ok) {
         const data = await response.json();
         const fetchedAdmins = data.admins || [];
-        
+
         if (fetchedAdmins.length === 0) {
-          setAdminsFetchError('No admins found. Please check your Intercom configuration.');
+          setAdminsFetchError(
+            'No admins found. Please check your Intercom configuration.',
+          );
         } else {
           adminsCache = fetchedAdmins; // Cache for session
           setAdmins(fetchedAdmins);
@@ -211,7 +257,10 @@ export function IntercomUploadDialog({
       return;
     }
 
-    if ((articleType === 'internal' || articleType === 'helpcenter') && !selectedAuthor) {
+    if (
+      (articleType === 'internal' || articleType === 'helpcenter') &&
+      !selectedAuthor
+    ) {
       toast.error('Please select an author');
       return;
     }
@@ -224,9 +273,10 @@ export function IntercomUploadDialog({
     setIsUploading(true);
 
     try {
-      const endpoint = articleType === 'internal' 
-        ? '/api/intercom/articles/internal' 
-        : '/api/intercom/articles/helpcenter';
+      const endpoint =
+        articleType === 'internal'
+          ? '/api/intercom/articles/internal'
+          : '/api/intercom/articles/helpcenter';
 
       const response = await fetch(endpoint, {
         method: 'POST',
@@ -236,13 +286,13 @@ export function IntercomUploadDialog({
         body: JSON.stringify({
           title: articleTitle,
           content,
-          ...(articleType === 'internal' && { 
-            authorId: selectedAuthor
+          ...(articleType === 'internal' && {
+            authorId: selectedAuthor,
           }),
           ...(articleType === 'helpcenter' && {
             authorId: selectedAuthor,
             collectionId: selectedCollection?.id,
-            description: articleDescription.trim() || undefined
+            description: articleDescription.trim() || undefined,
           }),
         }),
       });
@@ -250,13 +300,17 @@ export function IntercomUploadDialog({
       const result = await response.json();
 
       if (response.ok) {
-        toast.success(`Article created successfully in ${articleType === 'internal' ? 'Internal Knowledge Base' : 'Help Center'}`);
+        toast.success(
+          `Article created successfully in ${articleType === 'internal' ? 'Internal Knowledge Base' : 'Help Center'}`,
+        );
         if (result.url) {
           window.open(result.url, '_blank');
         }
         onClose();
       } else {
-        toast.error(`Failed to create article: ${result.error || 'Unknown error'}`);
+        toast.error(
+          `Failed to create article: ${result.error || 'Unknown error'}`,
+        );
       }
     } catch (error) {
       console.error('Upload error:', error);
@@ -287,7 +341,12 @@ export function IntercomUploadDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="article-type">Article Type</Label>
-            <Select value={articleType} onValueChange={(value: 'helpcenter' | 'internal') => setArticleType(value)}>
+            <Select
+              value={articleType}
+              onValueChange={(value: 'helpcenter' | 'internal') =>
+                setArticleType(value)
+              }
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select article type" />
               </SelectTrigger>
@@ -314,34 +373,41 @@ export function IntercomUploadDialog({
                 <>
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
                     <p className="text-sm text-amber-800">
-                      ℹ️ Internal articles will be created at the root level. You&apos;ll need to manually move them to your desired folder in Intercom.
+                      ℹ️ Internal articles will be created at the root level.
+                      You&apos;ll need to manually move them to your desired
+                      folder in Intercom.
                     </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="author-select">Author</Label>
-                  {isLoadingAdmins ? (
-                    <div className="flex items-center justify-center py-2">
-                      <Loader2 className="size-4 animate-spin" />
-                      <span className="ml-2 text-sm text-muted-foreground">Loading authors...</span>
-                    </div>
-                  ) : adminsFetchError ? (
-                    <div className="text-sm text-destructive">
-                      {adminsFetchError}
-                    </div>
-                  ) : (
-                    <Select value={selectedAuthor} onValueChange={setSelectedAuthor}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select author" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {admins.map((admin) => (
-                          <SelectItem key={admin.id} value={admin.id}>
-                            {admin.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                    {isLoadingAdmins ? (
+                      <div className="flex items-center justify-center py-2">
+                        <Loader2 className="size-4 animate-spin" />
+                        <span className="ml-2 text-sm text-muted-foreground">
+                          Loading authors...
+                        </span>
+                      </div>
+                    ) : adminsFetchError ? (
+                      <div className="text-sm text-destructive">
+                        {adminsFetchError}
+                      </div>
+                    ) : (
+                      <Select
+                        value={selectedAuthor}
+                        onValueChange={setSelectedAuthor}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select author" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {admins.map((admin) => (
+                            <SelectItem key={admin.id} value={admin.id}>
+                              {admin.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 </>
               )}
@@ -357,21 +423,27 @@ export function IntercomUploadDialog({
                     >
                       {selectedCollection ? (
                         <div className="text-left">
-                          <p className="font-medium">{selectedCollection.name}</p>
+                          <p className="font-medium">
+                            {selectedCollection.name}
+                          </p>
                           {collectionPath.length > 0 && (
                             <p className="text-sm text-muted-foreground">
-                              {collectionPath.map(c => c.name).join(' > ')}
+                              {collectionPath.map((c) => c.name).join(' > ')}
                             </p>
                           )}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground">Select collection...</span>
+                        <span className="text-muted-foreground">
+                          Select collection...
+                        </span>
                       )}
                     </Button>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="article-description">Description (optional)</Label>
+                    <Label htmlFor="article-description">
+                      Description (optional)
+                    </Label>
                     <Textarea
                       id="article-description"
                       value={articleDescription}
@@ -396,14 +468,19 @@ export function IntercomUploadDialog({
                     {isLoadingAdmins ? (
                       <div className="flex items-center justify-center py-2">
                         <Loader2 className="size-4 animate-spin" />
-                        <span className="ml-2 text-sm text-muted-foreground">Loading authors...</span>
+                        <span className="ml-2 text-sm text-muted-foreground">
+                          Loading authors...
+                        </span>
                       </div>
                     ) : adminsFetchError ? (
                       <div className="text-sm text-destructive">
                         {adminsFetchError}
                       </div>
                     ) : (
-                      <Select value={selectedAuthor} onValueChange={setSelectedAuthor}>
+                      <Select
+                        value={selectedAuthor}
+                        onValueChange={setSelectedAuthor}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select author" />
                         </SelectTrigger>
@@ -420,11 +497,18 @@ export function IntercomUploadDialog({
                 </>
               )}
 
-              <Button 
-                onClick={handleSubmit} 
-                disabled={isUploading || !articleTitle.trim() || 
-                  (articleType === 'internal' && (!selectedAuthor || adminsFetchError !== null)) ||
-                  (articleType === 'helpcenter' && (!selectedAuthor || !selectedCollection || adminsFetchError !== null))}
+              <Button
+                onClick={handleSubmit}
+                disabled={
+                  isUploading ||
+                  !articleTitle.trim() ||
+                  (articleType === 'internal' &&
+                    (!selectedAuthor || adminsFetchError !== null)) ||
+                  (articleType === 'helpcenter' &&
+                    (!selectedAuthor ||
+                      !selectedCollection ||
+                      adminsFetchError !== null))
+                }
                 className="w-full"
               >
                 {isUploading ? (

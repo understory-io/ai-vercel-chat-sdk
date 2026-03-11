@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState , useRef } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+} from 'react';
 import { Button } from '@/components/ui/button';
 import { useArtifact } from '@/hooks/use-artifact';
 import { Loader2, X, Copy } from 'lucide-react';
@@ -28,7 +34,10 @@ export function ArtifactSidebar() {
   );
 
   const latestDocument = useMemo(
-    () => (documents && documents.length > 0 ? documents[documents.length - 1] : null),
+    () =>
+      documents && documents.length > 0
+        ? documents[documents.length - 1]
+        : null,
     [documents],
   );
 
@@ -44,7 +53,7 @@ export function ArtifactSidebar() {
           status: 'idle',
         }));
       }, 3000);
-      
+
       return () => clearTimeout(timer);
     }
   }, [artifact.status, setArtifact]);
@@ -70,12 +79,14 @@ export function ArtifactSidebar() {
       await mutate(
         `/api/document?id=${artifact.documentId}`,
         async (currentDocuments?: Array<Document>) => {
-          if (!currentDocuments || currentDocuments.length === 0) return currentDocuments;
+          if (!currentDocuments || currentDocuments.length === 0)
+            return currentDocuments;
 
           const currentDocument = currentDocuments[currentDocuments.length - 1];
           const incomingTitle = updatedTitle ?? artifact.title;
 
-          const contentChanged = (currentDocument.content ?? '') !== updatedContent;
+          const contentChanged =
+            (currentDocument.content ?? '') !== updatedContent;
           const titleChanged = (currentDocument.title ?? '') !== incomingTitle;
 
           if (!contentChanged && !titleChanged) {
@@ -148,7 +159,6 @@ export function ArtifactSidebar() {
       isVisible: false,
     }));
   };
-
 
   if (!artifact?.isVisible) {
     return null;
@@ -254,7 +264,7 @@ export function ArtifactSidebar() {
           AI is generating content... (editing disabled)
         </div>
       )}
-      
+
       {isUpdated && (
         <div className="px-4 py-2 bg-green-50 border-b border-green-200 text-green-800 text-sm flex items-center gap-2">
           ✓ Updated
@@ -318,7 +328,7 @@ function PublishToIntercomButton({
           <IntercomIcon size={16} />
         </span>
       </Button>
-      
+
       <IntercomUploadDialog
         isOpen={isDialogOpen}
         onClose={() => setIsDialogOpen(false)}
@@ -347,7 +357,9 @@ function PublishToNotionButton({
       const lines = (titleText || '').trim()
         ? [titleText]
         : (contentText || '').split('\n').filter((l) => l.trim());
-      const title = (lines[0] || 'Untitled').replace(/^#+\s*/, '').slice(0, 200);
+      const title = (lines[0] || 'Untitled')
+        .replace(/^#+\s*/, '')
+        .slice(0, 200);
 
       const response = await fetch('/api/notion/export', {
         method: 'POST',

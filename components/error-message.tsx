@@ -47,7 +47,12 @@ const errorConfig = {
   },
 };
 
-export function ErrorMessage({ type, message, onRetry, className }: ErrorMessageProps) {
+export function ErrorMessage({
+  type,
+  message,
+  onRetry,
+  className,
+}: ErrorMessageProps) {
   const config = errorConfig[type];
 
   return (
@@ -59,7 +64,7 @@ export function ErrorMessage({ type, message, onRetry, className }: ErrorMessage
         'mx-auto max-w-2xl p-4 rounded-lg border',
         config.bgColor,
         config.borderColor,
-        className
+        className,
       )}
     >
       <div className="flex items-start gap-3">

@@ -1,4 +1,7 @@
-import { type APIRequestContext, request as playwrightRequest } from '@playwright/test';
+import {
+  type APIRequestContext,
+  request as playwrightRequest,
+} from '@playwright/test';
 import { SignJWT } from 'jose';
 
 const baseURL = `http://localhost:${process.env.PORT || 3000}`;
@@ -15,6 +18,7 @@ function getSigningKey(): Uint8Array {
  */
 export async function createTestUserWithToken(opts: {
   name: string;
+  email?: string;
   request: APIRequestContext;
 }): Promise<{
   userId: string;
@@ -25,7 +29,8 @@ export async function createTestUserWithToken(opts: {
   const sql = postgres(process.env.POSTGRES_URL!);
 
   try {
-    const email = `test-${opts.name}-${Date.now()}@test.playwright.io`;
+    const email =
+      opts.email || `test-${opts.name}-${Date.now()}@test.playwright.io`;
 
     // Create user directly in DB
     const [dbUser] = await sql`
@@ -55,7 +60,9 @@ export async function createTestUserWithToken(opts: {
 /**
  * Creates an API request context with a JWT in the Authorization header.
  */
-export async function createApiContext(token: string): Promise<APIRequestContext> {
+export async function createApiContext(
+  token: string,
+): Promise<APIRequestContext> {
   return playwrightRequest.newContext({
     baseURL,
     extraHTTPHeaders: {

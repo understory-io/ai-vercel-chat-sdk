@@ -24,7 +24,10 @@ export async function middleware(request: NextRequest) {
   }
 
   // Allow OAuth discovery endpoints (both original and rewritten paths)
-  if (pathname.startsWith('/.well-known/') || pathname.startsWith('/api/well-known/')) {
+  if (
+    pathname.startsWith('/.well-known/') ||
+    pathname.startsWith('/api/well-known/')
+  ) {
     return NextResponse.next();
   }
 

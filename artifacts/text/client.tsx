@@ -117,9 +117,9 @@ export const textArtifact = new Artifact<'text', TextArtifactMetadata>({
       onClick: async ({ content }) => {
         try {
           // Extract title from first line or use default
-          const lines = content.split('\n').filter(line => line.trim());
+          const lines = content.split('\n').filter((line) => line.trim());
           const title = lines[0]?.replace(/^#+\s*/, '') || 'Exported Document';
-          
+
           const response = await fetch('/api/notion/export', {
             method: 'POST',
             headers: {

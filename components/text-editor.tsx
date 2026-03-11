@@ -6,7 +6,11 @@ import { EditorState, TextSelection } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { toggleMark } from 'prosemirror-commands';
 import { keymap } from 'prosemirror-keymap';
-import { splitListItem, liftListItem, sinkListItem } from 'prosemirror-schema-list';
+import {
+  splitListItem,
+  liftListItem,
+  sinkListItem,
+} from 'prosemirror-schema-list';
 import React, { memo, useEffect, useRef } from 'react';
 
 import type { Suggestion } from '@/lib/db/schema';
@@ -55,14 +59,16 @@ function PureEditor({
         plugins: [
           // List-specific key bindings with proper commands
           keymap({
-            'Enter': (state, dispatch) => {
+            Enter: (state, dispatch) => {
               // Check if we're in a list item
               const { $from } = state.selection;
               for (let i = $from.depth; i >= 0; i--) {
                 const node = $from.node(i);
                 if (node.type.name === 'list_item') {
                   // We're in a list item, use splitListItem
-                  const splitCommand = splitListItem(state.schema.nodes.list_item);
+                  const splitCommand = splitListItem(
+                    state.schema.nodes.list_item,
+                  );
                   return splitCommand(state, dispatch);
                 }
               }
@@ -75,7 +81,9 @@ function PureEditor({
                 const { tr } = state;
                 // Try to insert a hard break if available, otherwise insert text
                 if (state.schema.nodes.hard_break) {
-                  tr.replaceSelectionWith(state.schema.nodes.hard_break.create());
+                  tr.replaceSelectionWith(
+                    state.schema.nodes.hard_break.create(),
+                  );
                 } else {
                   tr.insertText('\n');
                 }
@@ -83,7 +91,7 @@ function PureEditor({
               }
               return true;
             },
-            'Tab': sinkListItem(documentSchema.nodes.list_item),
+            Tab: sinkListItem(documentSchema.nodes.list_item),
             'Shift-Tab': liftListItem(documentSchema.nodes.list_item),
           }),
           ...exampleSetup({ schema: documentSchema, menuBar: false }),
@@ -170,7 +178,7 @@ function PureEditor({
           const safeFrom = Math.min(from, maxPos);
           const safeTo = Math.min(to, maxPos);
           transaction.setSelection(
-            TextSelection.create(transaction.doc, safeFrom, safeTo)
+            TextSelection.create(transaction.doc, safeFrom, safeTo),
           );
         } catch (e) {
           // If we can't restore the exact position, just continue
@@ -201,7 +209,7 @@ function PureEditor({
           const safeTo = Math.min(to, maxPos);
 
           transaction.setSelection(
-            TextSelection.create(transaction.doc, safeFrom, safeTo)
+            TextSelection.create(transaction.doc, safeFrom, safeTo),
           );
         } catch (e) {
           // If we can't restore the exact position (e.g., position no longer exists),

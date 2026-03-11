@@ -40,7 +40,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (!getTagsResponse.ok) {
-      console.error('Failed to fetch existing tags:', getTagsResponse.statusText);
+      console.error(
+        'Failed to fetch existing tags:',
+        getTagsResponse.statusText,
+      );
       return NextResponse.json(
         { error: 'Failed to check existing tags' },
         { status: getTagsResponse.status },
@@ -48,7 +51,9 @@ export async function POST(request: NextRequest) {
     }
 
     const existingTagsData = await getTagsResponse.json();
-    const existingTagNames = (existingTagsData.data || []).map((tag: any) => tag.name);
+    const existingTagNames = (existingTagsData.data || []).map(
+      (tag: any) => tag.name,
+    );
 
     // Generate unique tag name
     let finalTagName = `doc_pair:${cleanTagBase}`;

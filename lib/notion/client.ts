@@ -27,19 +27,19 @@ export class NotionService {
   constructor() {
     const token = process.env.NOTION_TOKEN;
     const databaseId = process.env.NOTION_DATABASE_ID;
-    
+
     if (!token) {
       throw new Error('NOTION_TOKEN environment variable is required');
     }
-    
+
     if (!databaseId) {
       throw new Error('NOTION_DATABASE_ID environment variable is required');
     }
-    
+
     this.client = new Client({
       auth: token,
     });
-    
+
     this.databaseId = databaseId;
   }
 
@@ -62,14 +62,19 @@ export class NotionService {
   /**
    * Query pages from the configured database
    */
-  async searchPages(query?: string, startCursor?: string): Promise<NotionSearchResult> {
+  async searchPages(
+    query?: string,
+    startCursor?: string,
+  ): Promise<NotionSearchResult> {
     try {
       const queryParams: any = {
         page_size: 100,
-        sorts: [{
-          timestamp: 'last_edited_time',
-          direction: 'descending'
-        }]
+        sorts: [
+          {
+            timestamp: 'last_edited_time',
+            direction: 'descending',
+          },
+        ],
       };
 
       // Add text search filter if query provided
@@ -79,17 +84,17 @@ export class NotionService {
             {
               property: 'Name', // Most databases have a Name property
               title: {
-                contains: query.trim()
-              }
+                contains: query.trim(),
+              },
             },
             // Add more searchable properties as fallback
             {
               property: 'Title',
               title: {
-                contains: query.trim()
-              }
-            }
-          ]
+                contains: query.trim(),
+              },
+            },
+          ],
         };
       }
 
@@ -99,20 +104,23 @@ export class NotionService {
 
       const response = await this.client.databases.query({
         database_id: this.databaseId,
-        ...queryParams
+        ...queryParams,
       });
 
-      const pages = response.results
-        .map(page => this.transformDatabasePageToNotionPage(page));
+      const pages = response.results.map((page) =>
+        this.transformDatabasePageToNotionPage(page),
+      );
 
       return {
         pages,
         hasMore: response.has_more,
-        nextCursor: response.next_cursor || undefined
+        nextCursor: response.next_cursor || undefined,
       };
     } catch (error) {
       console.error('Error querying Notion database:', error);
-      throw new Error(`Failed to query Notion database: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to query Notion database: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -132,7 +140,8 @@ export class NotionService {
     let cursor: string | undefined;
     let hasMore = true;
 
-    while (hasMore && allPages.length < 1000) { // Safety limit
+    while (hasMore && allPages.length < 1000) {
+      // Safety limit
       const result = await this.searchPages(undefined, cursor);
       allPages.push(...result.pages);
       hasMore = result.hasMore;
@@ -156,7 +165,9 @@ export class NotionService {
       return this.blocksToMarkdown(blocks);
     } catch (error) {
       console.error(`Error fetching content for page ${pageId}:`, error);
-      throw new Error(`Failed to fetch page content: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Failed to fetch page content: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 
@@ -172,7 +183,7 @@ export class NotionService {
       const response = await this.client.blocks.children.list({
         block_id: blockId,
         page_size: 100,
-        start_cursor: cursor
+        start_cursor: cursor,
       });
 
       blocks.push(...response.results);
@@ -199,86 +210,93 @@ export class NotionService {
 
     for (const block of blocks) {
       const text = this.extractTextFromBlock(block);
-      
+
       switch (block.type) {
         case 'paragraph':
           if (text) lines.push(`${indent}${text}`);
           break;
-        
+
         case 'heading_1':
           lines.push(`${indent}# ${text}`);
           break;
-        
+
         case 'heading_2':
           lines.push(`${indent}## ${text}`);
           break;
-        
+
         case 'heading_3':
           lines.push(`${indent}### ${text}`);
           break;
-        
+
         case 'bulleted_list_item':
           lines.push(`${indent}• ${text}`);
           break;
-        
+
         case 'numbered_list_item':
           lines.push(`${indent}1. ${text}`);
           break;
-        
+
         case 'to_do': {
           const checked = block.to_do?.checked ? '✓' : ' ';
           lines.push(`${indent}[${checked}] ${text}`);
           break;
         }
-        
+
         case 'toggle':
           lines.push(`${indent}▶ ${text}`);
           break;
-        
+
         case 'code': {
           const language = block.code?.language || '';
-          const code = block.code?.rich_text?.map((t: any) => t.plain_text).join('') || '';
+          const code =
+            block.code?.rich_text?.map((t: any) => t.plain_text).join('') || '';
           lines.push(`${indent}\`\`\`${language}`);
           lines.push(code);
           lines.push(`${indent}\`\`\``);
           break;
         }
-        
+
         case 'quote':
           lines.push(`${indent}> ${text}`);
           break;
-        
+
         case 'callout': {
           const icon = block.callout?.icon?.emoji || 'ℹ️';
           lines.push(`${indent}${icon} ${text}`);
           break;
         }
-        
+
         case 'divider':
           lines.push(`${indent}---`);
           break;
-        
+
         case 'table':
           // Tables are complex, just indicate presence
-          lines.push(`${indent}[Table with ${block.table?.table_width || 0} columns]`);
+          lines.push(
+            `${indent}[Table with ${block.table?.table_width || 0} columns]`,
+          );
           break;
-        
+
         case 'child_page':
           lines.push(`${indent}📄 [${block.child_page?.title || 'Subpage'}]`);
           break;
-        
+
         case 'child_database':
-          lines.push(`${indent}🗂️ [${block.child_database?.title || 'Database'}]`);
+          lines.push(
+            `${indent}🗂️ [${block.child_database?.title || 'Database'}]`,
+          );
           break;
-        
+
         case 'embed':
         case 'image':
         case 'video':
         case 'file':
         case 'pdf':
-          lines.push(`${indent}[${block.type}: ${block[block.type]?.caption?.[0]?.plain_text || 'Media'}]`);
+          lines.push(
+            `${indent}[${block.type}: ${block[block.type]?.caption?.[0]?.plain_text || 'Media'}]`,
+          );
           break;
-        
+
         default:
           if (text) lines.push(`${indent}${text}`);
       }
@@ -296,21 +314,20 @@ export class NotionService {
    * Extract text content from a block
    */
   private extractTextFromBlock(block: any): string {
-    const richTextProperty = block[block.type]?.rich_text || block[block.type]?.text;
-    
+    const richTextProperty =
+      block[block.type]?.rich_text || block[block.type]?.text;
+
     if (Array.isArray(richTextProperty)) {
-      return richTextProperty
-        .map((text: any) => text.plain_text)
-        .join('');
+      return richTextProperty.map((text: any) => text.plain_text).join('');
     }
-    
+
     // For heading blocks
     if (block[block.type]?.text && Array.isArray(block[block.type].text)) {
       return block[block.type].text
         .map((text: any) => text.plain_text)
         .join('');
     }
-    
+
     return '';
   }
 
@@ -327,7 +344,7 @@ export class NotionService {
       title,
       path,
       lastModified,
-      lastEditedTime: page.last_edited_time // Keep ISO timestamp for sorting
+      lastEditedTime: page.last_edited_time, // Keep ISO timestamp for sorting
     };
   }
 
@@ -344,7 +361,7 @@ export class NotionService {
       title,
       path,
       lastModified,
-      lastEditedTime: page.last_edited_time
+      lastEditedTime: page.last_edited_time,
     };
   }
 
@@ -358,7 +375,7 @@ export class NotionService {
 
     // Common title property names in Notion databases
     const titlePropertyNames = ['Name', 'Title', 'Page', 'Document'];
-    
+
     for (const propName of titlePropertyNames) {
       const prop = page.properties[propName];
       if (prop?.type === 'title' && prop.title?.length > 0) {
@@ -371,7 +388,7 @@ export class NotionService {
 
     // Fallback: find any title property
     const titleProp = Object.values(page.properties).find(
-      (prop: any) => prop.type === 'title'
+      (prop: any) => prop.type === 'title',
     ) as any;
 
     if (titleProp?.title && titleProp.title.length > 0) {
@@ -392,7 +409,7 @@ export class NotionService {
     if (page.properties) {
       // Look for title property
       const titleProp = Object.values(page.properties).find(
-        (prop: any) => prop.type === 'title'
+        (prop: any) => prop.type === 'title',
       ) as any;
 
       if (titleProp?.title && titleProp.title.length > 0) {
@@ -426,7 +443,7 @@ export class NotionService {
 
     // Look for status-related properties first
     const statusProps = ['Status', 'State', 'Progress', 'Phase', 'Stage'];
-    
+
     for (const propName of statusProps) {
       const prop = page.properties[propName];
       if (prop?.type === 'select' && prop.select?.name) {
@@ -439,7 +456,7 @@ export class NotionService {
 
     // Fallback to other categorical properties
     const categoryProps = ['Category', 'Type', 'Priority', 'Team', 'Project'];
-    
+
     for (const propName of categoryProps) {
       const prop = page.properties[propName];
       if (prop?.type === 'select' && prop.select?.name) {
@@ -449,7 +466,7 @@ export class NotionService {
         return prop.multi_select[0].name; // Take first tag
       }
     }
-    
+
     return 'No Status';
   }
 
@@ -517,9 +534,19 @@ export function getNotionService(): NotionService {
 
 // For backwards compatibility - will throw if accessed without env vars
 export const notionService = {
-  get testConnection() { return getNotionService().testConnection.bind(getNotionService()); },
-  get searchPages() { return getNotionService().searchPages.bind(getNotionService()); },
-  get getRecentPages() { return getNotionService().getRecentPages.bind(getNotionService()); },
-  get getAllPages() { return getNotionService().getAllPages.bind(getNotionService()); },
-  get getPageContent() { return getNotionService().getPageContent.bind(getNotionService()); },
+  get testConnection() {
+    return getNotionService().testConnection.bind(getNotionService());
+  },
+  get searchPages() {
+    return getNotionService().searchPages.bind(getNotionService());
+  },
+  get getRecentPages() {
+    return getNotionService().getRecentPages.bind(getNotionService());
+  },
+  get getAllPages() {
+    return getNotionService().getAllPages.bind(getNotionService());
+  },
+  get getPageContent() {
+    return getNotionService().getPageContent.bind(getNotionService());
+  },
 };

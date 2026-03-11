@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
           success: false,
           error: 'Title and content are required',
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -66,18 +66,18 @@ export async function POST(request: NextRequest) {
           success: false,
           error: result.error || 'Failed to export to Notion',
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
   } catch (error) {
     console.error('Notion export API error:', error);
-    
+
     return NextResponse.json(
       {
         success: false,
         error: error instanceof Error ? error.message : 'Internal server error',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -89,28 +89,31 @@ export async function GET(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
     // Test connection
     const isConnected = await notionExporter.testExportConnection();
-    
+
     return NextResponse.json({
       success: true,
       connected: isConnected,
-      message: isConnected ? 'Notion connection is working' : 'Notion connection failed',
+      message: isConnected
+        ? 'Notion connection is working'
+        : 'Notion connection failed',
     });
   } catch (error) {
     console.error('Notion connection test error:', error);
-    
+
     return NextResponse.json(
       {
         success: false,
         connected: false,
-        error: error instanceof Error ? error.message : 'Connection test failed',
+        error:
+          error instanceof Error ? error.message : 'Connection test failed',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -116,21 +116,37 @@ function PureMultimodalInput({
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
     // Separate context attachments (with content) from file attachments
-    const notionAttachments = attachments.filter(a => a.type === 'notion' && a.content);
-    const intercomAttachments = attachments.filter(a => a.type === 'intercom' && a.content);
-    const fileAttachments = attachments.filter(a => a.type !== 'notion' && a.type !== 'intercom');
+    const notionAttachments = attachments.filter(
+      (a) => a.type === 'notion' && a.content,
+    );
+    const intercomAttachments = attachments.filter(
+      (a) => a.type === 'intercom' && a.content,
+    );
+    const fileAttachments = attachments.filter(
+      (a) => a.type !== 'notion' && a.type !== 'intercom',
+    );
 
     // Combine all context content with user input into a single text part
     const notionContent = notionAttachments
-      .map(attachment => `[Notion Document: ${attachment.name}]\n\n${attachment.content}\n\n---\n`)
+      .map(
+        (attachment) =>
+          `[Notion Document: ${attachment.name}]\n\n${attachment.content}\n\n---\n`,
+      )
       .join('\n');
 
     const intercomContent = intercomAttachments
-      .map(attachment => `[Help Center Article: ${attachment.name}]\n\n${attachment.content}\n\n---\n`)
+      .map(
+        (attachment) =>
+          `[Help Center Article: ${attachment.name}]\n\n${attachment.content}\n\n---\n`,
+      )
       .join('\n');
 
-    const allContextContent = [notionContent, intercomContent].filter(Boolean).join('\n');
-    const combinedText = allContextContent ? `${allContextContent}\n${input}` : input;
+    const allContextContent = [notionContent, intercomContent]
+      .filter(Boolean)
+      .join('\n');
+    const combinedText = allContextContent
+      ? `${allContextContent}\n${input}`
+      : input;
 
     sendMessage({
       role: 'user',
@@ -224,9 +240,13 @@ function PureMultimodalInput({
 
   const { isAtBottom, scrollToBottom } = useScrollToBottom();
   const [notionModalOpen, setNotionModalOpen] = useState(false);
-  const [selectedNotionPages, setSelectedNotionPages] = useState<Array<{id: string, title: string, path: string, lastModified: string}>>([]);
+  const [selectedNotionPages, setSelectedNotionPages] = useState<
+    Array<{ id: string; title: string; path: string; lastModified: string }>
+  >([]);
   const [intercomModalOpen, setIntercomModalOpen] = useState(false);
-  const [selectedIntercomArticles, setSelectedIntercomArticles] = useState<Array<{id: string, title: string, body?: string}>>([]);
+  const [selectedIntercomArticles, setSelectedIntercomArticles] = useState<
+    Array<{ id: string; title: string; body?: string }>
+  >([]);
 
   // Convert selected Notion pages to attachments
   useEffect(() => {
@@ -239,13 +259,13 @@ function PureMultimodalInput({
       notionPath: page.path,
       lastModified: page.lastModified,
       content: (page as any).content || '',
-      contentStatus: (page as any).contentStatus || 'pending' as const,
+      contentStatus: (page as any).contentStatus || ('pending' as const),
       contentError: (page as any).contentError,
     }));
 
     setAttachments((prev) => {
       // Remove existing notion attachments and add new ones
-      const nonNotionAttachments = prev.filter(a => a.type !== 'notion');
+      const nonNotionAttachments = prev.filter((a) => a.type !== 'notion');
       return [...nonNotionAttachments, ...notionAttachments];
     });
   }, [selectedNotionPages, setAttachments]);
@@ -263,7 +283,7 @@ function PureMultimodalInput({
 
     setAttachments((prev) => {
       // Remove existing intercom attachments and add new ones
-      const nonIntercomAttachments = prev.filter(a => a.type !== 'intercom');
+      const nonIntercomAttachments = prev.filter((a) => a.type !== 'intercom');
       return [...nonIntercomAttachments, ...intercomAttachments];
     });
   }, [selectedIntercomArticles, setAttachments]);
@@ -281,7 +301,7 @@ function PureMultimodalInput({
       if (!items) return;
 
       const files: File[] = [];
-      
+
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         if (item.kind === 'file' && item.type.startsWith('image/')) {
@@ -341,33 +361,36 @@ function PureMultimodalInput({
     }
   }, []);
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
 
-    const files = Array.from(e.dataTransfer.files);
-    if (files.length === 0) return;
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length === 0) return;
 
-    setUploadQueue(files.map((file) => file.name));
+      setUploadQueue(files.map((file) => file.name));
 
-    try {
-      const uploadPromises = files.map((file) => uploadFile(file));
-      const uploadedAttachments = await Promise.all(uploadPromises);
-      const successfullyUploadedAttachments = uploadedAttachments.filter(
-        (attachment) => attachment !== undefined,
-      );
+      try {
+        const uploadPromises = files.map((file) => uploadFile(file));
+        const uploadedAttachments = await Promise.all(uploadPromises);
+        const successfullyUploadedAttachments = uploadedAttachments.filter(
+          (attachment) => attachment !== undefined,
+        );
 
-      setAttachments((currentAttachments) => [
-        ...currentAttachments,
-        ...successfullyUploadedAttachments,
-      ]);
-    } catch (error) {
-      console.error('Error uploading dropped files!', error);
-    } finally {
-      setUploadQueue([]);
-    }
-  }, [setAttachments]);
+        setAttachments((currentAttachments) => [
+          ...currentAttachments,
+          ...successfullyUploadedAttachments,
+        ]);
+      } catch (error) {
+        console.error('Error uploading dropped files!', error);
+      } finally {
+        setUploadQueue([]);
+      }
+    },
+    [setAttachments],
+  );
 
   return (
     <div className="relative w-full flex flex-col gap-4">
@@ -396,7 +419,6 @@ function PureMultimodalInput({
         )}
       </AnimatePresence>
 
-
       <input
         type="file"
         className="fixed -top-4 -left-4 size-0.5 opacity-0 pointer-events-none"
@@ -406,15 +428,15 @@ function PureMultimodalInput({
         tabIndex={-1}
       />
 
-      <div 
+      <div
         role="region"
         aria-label="File drop zone"
         className={cx(
           'relative rounded-2xl bg-muted border transition-all duration-200',
-          (attachments.length > 0 || uploadQueue.length > 0) ? 'pb-12' : 'pb-10',
-          isDragOver 
-            ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-950/50' 
-            : 'border-border dark:border-zinc-700'
+          attachments.length > 0 || uploadQueue.length > 0 ? 'pb-12' : 'pb-10',
+          isDragOver
+            ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-950/50'
+            : 'border-border dark:border-zinc-700',
         )}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
@@ -429,11 +451,13 @@ function PureMultimodalInput({
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {attachments.map((attachment) => (
-                <PreviewAttachment 
-                  key={attachment.url} 
-                  attachment={attachment} 
+                <PreviewAttachment
+                  key={attachment.url}
+                  attachment={attachment}
                   onRemove={() => {
-                    setAttachments((prev) => prev.filter((a) => a.url !== attachment.url));
+                    setAttachments((prev) =>
+                      prev.filter((a) => a.url !== attachment.url),
+                    );
                   }}
                 />
               ))}
@@ -461,7 +485,7 @@ function PureMultimodalInput({
           onChange={handleInput}
           className={cx(
             'min-h-[24px] max-h-[350px] overflow-hidden resize-none border-0 bg-transparent !text-base focus-visible:ring-0 focus-visible:ring-offset-0 px-3 py-2',
-            (attachments.length > 0 || uploadQueue.length > 0) ? 'pt-0' : 'pt-2',
+            attachments.length > 0 || uploadQueue.length > 0 ? 'pt-0' : 'pt-2',
             className,
           )}
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
@@ -476,7 +500,9 @@ function PureMultimodalInput({
               event.preventDefault();
 
               if (status !== 'ready') {
-                toast.error('Please wait for the model to finish its response!');
+                toast.error(
+                  'Please wait for the model to finish its response!',
+                );
               } else {
                 submitForm();
               }
@@ -486,8 +512,14 @@ function PureMultimodalInput({
 
         <div className="absolute bottom-0 left-0 p-2 flex flex-row gap-1">
           <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-          <NotionButton status={status} onClick={() => setNotionModalOpen(true)} />
-          <IntercomButton status={status} onClick={() => setIntercomModalOpen(true)} />
+          <NotionButton
+            status={status}
+            onClick={() => setNotionModalOpen(true)}
+          />
+          <IntercomButton
+            status={status}
+            onClick={() => setIntercomModalOpen(true)}
+          />
         </div>
 
         <div className="absolute bottom-0 right-0 p-2">
@@ -681,4 +713,3 @@ function PureIntercomButton({
 }
 
 const IntercomButton = memo(PureIntercomButton);
-

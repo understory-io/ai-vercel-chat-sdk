@@ -35,8 +35,11 @@ export function CollectionSelectorModal({
 }: CollectionSelectorModalProps) {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [currentPath, setCurrentPath] = useState<Collection[]>([]);
-  const [currentCollections, setCurrentCollections] = useState<Collection[]>([]);
-  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
+  const [currentCollections, setCurrentCollections] = useState<Collection[]>(
+    [],
+  );
+  const [selectedCollection, setSelectedCollection] =
+    useState<Collection | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,9 +80,11 @@ export function CollectionSelectorModal({
       if (response.ok) {
         const data = await response.json();
         const fetchedCollections = data.collections || [];
-        
+
         if (fetchedCollections.length === 0) {
-          setError('No collections found. Please create collections in Intercom first.');
+          setError(
+            'No collections found. Please create collections in Intercom first.',
+          );
         } else {
           collectionsCache = fetchedCollections; // Cache for session
           setCollections(fetchedCollections);
@@ -154,7 +159,9 @@ export function CollectionSelectorModal({
           <div className="flex-1 flex items-center justify-center py-8">
             <div className="text-center">
               <div className="animate-spin rounded-full size-8 border-b-2 border-primary mx-auto mb-2" />
-              <p className="text-sm text-muted-foreground">Loading collections...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading collections...
+              </p>
             </div>
           </div>
         ) : error ? (
@@ -182,7 +189,10 @@ export function CollectionSelectorModal({
                     Collections
                   </button>
                   {currentPath.map((collection, index) => (
-                    <div key={collection.id} className="flex items-center gap-1">
+                    <div
+                      key={collection.id}
+                      className="flex items-center gap-1"
+                    >
                       <ChevronRight className="size-3 text-muted-foreground" />
                       <button
                         onClick={() => navigateToBreadcrumb(index)}
@@ -231,17 +241,13 @@ export function CollectionSelectorModal({
               <Button variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button 
-                onClick={handleSelect}
-                disabled={!canSelect}
-              >
+              <Button onClick={handleSelect} disabled={!canSelect}>
                 Select
-                {selectedCollection 
+                {selectedCollection
                   ? ` "${selectedCollection.name}"`
-                  : currentPath.length > 0 
+                  : currentPath.length > 0
                     ? ` "${currentPath[currentPath.length - 1].name}"`
-                    : ''
-                }
+                    : ''}
               </Button>
             </div>
           </>

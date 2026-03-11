@@ -5,12 +5,13 @@ import { getCached, setCached } from '@/lib/redis';
 export async function GET(request: NextRequest) {
   const accessToken = process.env.INTERCOM_ACCESS_TOKEN;
   const collectionId = request.nextUrl.searchParams.get('collection_id');
-  const metadataOnly = request.nextUrl.searchParams.get('metadata_only') === 'true';
+  const metadataOnly =
+    request.nextUrl.searchParams.get('metadata_only') === 'true';
 
   if (!accessToken) {
     return NextResponse.json(
       { error: 'Intercom access token not configured' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -25,13 +26,14 @@ export async function GET(request: NextRequest) {
       let nextUrl: string | null = 'https://api.intercom.io/articles';
       let pageCount = 0;
 
-      while (nextUrl && pageCount < 10) { // Safety limit of 10 pages
+      while (nextUrl && pageCount < 10) {
+        // Safety limit of 10 pages
         pageCount++;
 
         const response: Response = await fetch(nextUrl, {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Accept': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+            Accept: 'application/json',
             'Intercom-Version': '2.14',
           },
         });
@@ -41,7 +43,7 @@ export async function GET(request: NextRequest) {
           console.error('Intercom API error:', errorData);
           return NextResponse.json(
             { error: `Failed to fetch articles: ${response.statusText}` },
-            { status: response.status }
+            { status: response.status },
           );
         }
 
@@ -61,8 +63,8 @@ export async function GET(request: NextRequest) {
           type: 'pages',
           page: 1,
           per_page: allArticles.length,
-          total_pages: 1
-        }
+          total_pages: 1,
+        },
       };
 
       // Cache the full response for 5 minutes (300 seconds)
@@ -80,7 +82,7 @@ export async function GET(request: NextRequest) {
         created_at: article.created_at,
         updated_at: article.updated_at,
         parent_id: article.parent_id,
-        parent_ids: article.parent_ids,  // Add parent_ids array field
+        parent_ids: article.parent_ids, // Add parent_ids array field
         parent_type: article.parent_type,
       };
 
@@ -97,8 +99,10 @@ export async function GET(request: NextRequest) {
 
     // Filter by collection_id if provided
     if (collectionId) {
-      articles = articles.filter((article: any) =>
-        article.parent_id === collectionId && article.parent_type === 'collection'
+      articles = articles.filter(
+        (article: any) =>
+          article.parent_id === collectionId &&
+          article.parent_type === 'collection',
       );
     }
 
@@ -107,12 +111,11 @@ export async function GET(request: NextRequest) {
       total: articles.length,
       metadata_only: metadataOnly,
     });
-
   } catch (error) {
     console.error('Error fetching articles:', error);
     return NextResponse.json(
       { error: 'Failed to fetch articles' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -124,31 +127,32 @@ export async function POST(request: NextRequest) {
   if (!accessToken) {
     return NextResponse.json(
       { error: 'Intercom access token not configured' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
   if (!workspaceId) {
     return NextResponse.json(
       { error: 'Intercom workspace ID not configured' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
   try {
-    const { title, content, authorId, collectionId, description } = await request.json();
+    const { title, content, authorId, collectionId, description } =
+      await request.json();
 
     if (!title || !content || !authorId) {
       return NextResponse.json(
         { error: 'Title, content, and authorId are required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (!collectionId) {
       return NextResponse.json(
         { error: 'Collection ID is required for help center articles' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -169,14 +173,14 @@ export async function POST(request: NextRequest) {
       parent_type: 'collection',
       parent_id: Number.parseInt(collectionId),
       state: 'draft', // Create as draft for review
-      ...(description && { description: normalizeDescription(description) })
+      ...(description && { description: normalizeDescription(description) }),
     };
 
     const response = await fetch('https://api.intercom.io/articles', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json',
         'Content-Type': 'application/json',
         'Intercom-Version': '2.14',
       },
@@ -187,8 +191,11 @@ export async function POST(request: NextRequest) {
       const errorData = await response.json().catch(() => ({}));
       console.error('Intercom API error:', errorData);
       return NextResponse.json(
-        { error: `Failed to create help center article: ${response.statusText}`, details: errorData },
-        { status: response.status }
+        {
+          error: `Failed to create help center article: ${response.statusText}`,
+          details: errorData,
+        },
+        { status: response.status },
       );
     }
 
@@ -199,15 +206,16 @@ export async function POST(request: NextRequest) {
       article: {
         id: articleData.id,
         title: articleData.title,
-        url: `https://app.intercom.com/a/apps/${workspaceId}/articles/${articleData.id}`,
-      }
+        url:
+          articleData.url ||
+          `https://app.intercom.com/a/apps/${articleData.workspace_id || process.env.INTERCOM_APP_ID || workspaceId}/knowledge-hub/all-content?searchTerm=${encodeURIComponent(articleData.title)}`,
+      },
     });
-
   } catch (error) {
     console.error('Error creating help center article:', error);
     return NextResponse.json(
       { error: 'Failed to create help center article' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

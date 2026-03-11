@@ -2,7 +2,9 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { createMcpServer } from '@/lib/mcp/server';
 import { verifyAccessToken } from '@/lib/mcp/jwt';
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://product-documentation-generator.vercel.app';
+const BASE_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  'https://product-documentation-generator.vercel.app';
 const RESOURCE_METADATA_URL = `${BASE_URL}/.well-known/oauth-protected-resource`;
 
 function unauthorizedResponse() {

@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   const accessToken = process.env.INTERCOM_ACCESS_TOKEN;
   const { id: articleId } = await params;
@@ -10,32 +10,35 @@ export async function GET(
   if (!accessToken) {
     return NextResponse.json(
       { error: 'Intercom access token not configured' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
   if (!articleId) {
     return NextResponse.json(
       { error: 'Article ID is required' },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
   try {
-    const response = await fetch(`https://api.intercom.io/articles/${articleId}`, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': 'application/json',
-        'Intercom-Version': '2.14',
+    const response = await fetch(
+      `https://api.intercom.io/articles/${articleId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
+          'Intercom-Version': '2.14',
+        },
       },
-    });
+    );
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('Intercom API error:', errorData);
       return NextResponse.json(
         { error: `Failed to fetch article: ${response.statusText}` },
-        { status: response.status }
+        { status: response.status },
       );
     }
 
@@ -55,12 +58,11 @@ export async function GET(
       parent_type: article.parent_type,
       url: article.url,
     });
-
   } catch (error) {
     console.error('Error fetching article:', error);
     return NextResponse.json(
       { error: 'Failed to fetch article' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
