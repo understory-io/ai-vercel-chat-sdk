@@ -44,6 +44,13 @@ function statusBadge(draft: ReviewDraft) {
         'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
     };
   }
+  if (draft.status === 'discarded') {
+    return {
+      label: 'Discarded',
+      className:
+        'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+    };
+  }
   if (draft.reviewResult === 'changes_requested') {
     return {
       label: 'Changes Requested',
@@ -103,6 +110,7 @@ export function ReviewDashboard({ drafts }: { drafts: ReviewDraft[] }) {
   const changesRequested = drafts.filter(
     (d) => d.reviewResult === 'changes_requested' && d.status === 'draft',
   );
+  const discarded = drafts.filter((d) => d.status === 'discarded');
 
   return (
     <div className="flex flex-col h-full">
@@ -144,6 +152,14 @@ export function ReviewDashboard({ drafts }: { drafts: ReviewDraft[] }) {
               {changesRequested.length > 0 && (
                 <span className="ml-1.5 text-xs opacity-60">
                   {changesRequested.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="discarded">
+              Discarded
+              {discarded.length > 0 && (
+                <span className="ml-1.5 text-xs opacity-60">
+                  {discarded.length}
                 </span>
               )}
             </TabsTrigger>
@@ -191,6 +207,18 @@ export function ReviewDashboard({ drafts }: { drafts: ReviewDraft[] }) {
             ) : (
               <div className="space-y-3 mt-2">
                 {changesRequested.map((draft) => (
+                  <ArticleCard key={draft.id} draft={draft} />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="discarded">
+            {discarded.length === 0 ? (
+              <EmptyState message="No discarded articles" />
+            ) : (
+              <div className="space-y-3 mt-2">
+                {discarded.map((draft) => (
                   <ArticleCard key={draft.id} draft={draft} />
                 ))}
               </div>

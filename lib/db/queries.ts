@@ -713,6 +713,7 @@ export async function getArticleDraftsForReviewDashboard() {
           isNotNull(articleDraft.submittedAt),
           eq(articleDraft.status, 'pending_review'),
           eq(articleDraft.status, 'published'),
+          eq(articleDraft.status, 'discarded'),
           isNotNull(articleDraft.reviewResult),
         ),
       )

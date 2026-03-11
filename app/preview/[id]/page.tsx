@@ -14,7 +14,7 @@ export default async function PreviewPage({
   const { id } = await params;
   const [draft, session] = await Promise.all([getArticleDraft({ id }), auth()]);
 
-  if (!draft || draft.status === 'discarded') {
+  if (!draft) {
     notFound();
   }
 
