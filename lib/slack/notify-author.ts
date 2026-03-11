@@ -1,5 +1,3 @@
-import { getSlackMembers } from './members';
-
 /**
  * Send a Slack DM to the article author when changes are requested.
  * Looks up the author's Slack user ID by email, opens a DM channel, and posts a message.
@@ -23,18 +21,21 @@ export async function notifyAuthorChangesRequested({
     return;
   }
 
-  // Find Slack user by email
-  const members = await getSlackMembers();
-  const slackUser = members.find(
-    (m) => m.email?.toLowerCase() === authorEmail.toLowerCase(),
+  // Look up Slack user by email (requires users:read.email scope)
+  const lookupRes = await fetch(
+    `https://slack.com/api/users.lookupByEmail?email=${encodeURIComponent(authorEmail)}`,
+    { headers: { Authorization: `Bearer ${token}` } },
   );
+  const lookupData = await lookupRes.json();
 
-  if (!slackUser) {
+  if (!lookupData.ok) {
     console.warn(
-      `No Slack user found for email ${authorEmail}, skipping notification`,
+      `Slack lookupByEmail failed for ${authorEmail}: ${lookupData.error}`,
     );
     return;
   }
+
+  const slackUserId = lookupData.user.id;
 
   // Open a DM channel
   const openRes = await fetch('https://slack.com/api/conversations.open', {
@@ -43,7 +44,7 @@ export async function notifyAuthorChangesRequested({
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ users: slackUser.id }),
+    body: JSON.stringify({ users: slackUserId }),
   });
 
   const openData = await openRes.json();

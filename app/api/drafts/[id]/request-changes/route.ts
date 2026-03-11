@@ -55,13 +55,19 @@ export async function POST(
       process.env.NEXT_PUBLIC_APP_URL ||
       'https://product-documentation-generator.vercel.app';
 
-    await notifyAuthorChangesRequested({
-      authorEmail: author.email,
-      articleTitle: draft.title,
-      reviewUrl: `${baseUrl}/preview/${draft.id}`,
-      note,
-      reviewerName: authResult.userEmail ?? undefined,
-    });
+    try {
+      await notifyAuthorChangesRequested({
+        authorEmail: author.email,
+        articleTitle: draft.title,
+        reviewUrl: `${baseUrl}/preview/${draft.id}`,
+        note,
+        reviewerName: authResult.userEmail ?? undefined,
+      });
+    } catch (err) {
+      console.error('Failed to notify author via Slack:', err);
+    }
+  } else {
+    console.warn(`No email found for author userId=${draft.userId}`);
   }
 
   return Response.json({ success: true, status: 'draft' });
