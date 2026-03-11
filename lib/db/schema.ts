@@ -23,21 +23,27 @@ export const user = pgTable('User', {
 
 export type User = InferSelectModel<typeof user>;
 
-export const account = pgTable('Account', {
-  userId: uuid('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
-  type: varchar('type', { length: 255 }).notNull(),
-  provider: varchar('provider', { length: 255 }).notNull(),
-  providerAccountId: varchar('providerAccountId', { length: 255 }).notNull(),
-  refresh_token: text('refresh_token'),
-  access_token: text('access_token'),
-  expires_at: integer('expires_at'),
-  token_type: varchar('token_type', { length: 255 }),
-  scope: varchar('scope', { length: 255 }),
-  id_token: text('id_token'),
-  session_state: varchar('session_state', { length: 255 }),
-}, (table) => ({
-  pk: primaryKey({ columns: [table.provider, table.providerAccountId] }),
-}));
+export const account = pgTable(
+  'Account',
+  {
+    userId: uuid('userId')
+      .notNull()
+      .references(() => user.id, { onDelete: 'cascade' }),
+    type: varchar('type', { length: 255 }).notNull(),
+    provider: varchar('provider', { length: 255 }).notNull(),
+    providerAccountId: varchar('providerAccountId', { length: 255 }).notNull(),
+    refresh_token: text('refresh_token'),
+    access_token: text('access_token'),
+    expires_at: integer('expires_at'),
+    token_type: varchar('token_type', { length: 255 }),
+    scope: varchar('scope', { length: 255 }),
+    id_token: text('id_token'),
+    session_state: varchar('session_state', { length: 255 }),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.provider, table.providerAccountId] }),
+  }),
+);
 
 export const chat = pgTable('Chat', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
@@ -101,7 +107,9 @@ export const document = pgTable(
       .notNull()
       .references(() => user.id),
     isAutosave: boolean('isAutosave').notNull().default(true), // Distinguish autosaves from explicit versions
-    versionType: varchar('versionType', { enum: ['autosave', 'explicit', 'ai_update'] })
+    versionType: varchar('versionType', {
+      enum: ['autosave', 'explicit', 'ai_update'],
+    })
       .notNull()
       .default('autosave'), // Type of save operation
   },
@@ -165,7 +173,10 @@ export const mcpOAuthClient = pgTable('McpOAuthClient', {
   clientId: varchar('clientId', { length: 255 }).notNull().unique(),
   clientName: varchar('clientName', { length: 255 }).notNull(),
   redirectUris: json('redirectUris').$type<string[]>().notNull().default([]),
-  grantTypes: json('grantTypes').$type<string[]>().notNull().default(['authorization_code']),
+  grantTypes: json('grantTypes')
+    .$type<string[]>()
+    .notNull()
+    .default(['authorization_code']),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
 });
 
@@ -211,10 +222,15 @@ export const articleDraft = pgTable('ArticleDraft', {
   title: text('title').notNull(),
   content: text('content').notNull(),
   description: varchar('description', { length: 255 }),
-  status: varchar('status', { enum: ['draft', 'published', 'discarded'] })
+  status: varchar('status', {
+    enum: ['draft', 'pending_review', 'published', 'discarded'],
+  })
     .notNull()
     .default('draft'),
   intercomArticleId: varchar('intercomArticleId', { length: 255 }),
+  submittedAt: timestamp('submittedAt'),
+  reviewedBy: uuid('reviewedBy').references(() => user.id),
+  reviewedAt: timestamp('reviewedAt'),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   updatedAt: timestamp('updatedAt').notNull().defaultNow(),
 });

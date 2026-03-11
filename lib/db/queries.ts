@@ -48,7 +48,6 @@ export async function getUser(email: string): Promise<Array<User>> {
   }
 }
 
-
 export async function saveChat({
   id,
   userId,
@@ -262,7 +261,12 @@ export async function saveDocument({
   versionType?: 'autosave' | 'explicit' | 'ai_update';
 }) {
   try {
-    console.log('Saving document with userId:', userId, 'versionType:', versionType);
+    console.log(
+      'Saving document with userId:',
+      userId,
+      'versionType:',
+      versionType,
+    );
 
     // For autosaves, check if we should update the latest autosave or create a new one
     if (versionType === 'autosave') {
@@ -287,8 +291,8 @@ export async function saveDocument({
           .where(
             and(
               eq(document.id, id),
-              eq(document.createdAt, latestDoc.createdAt)
-            )
+              eq(document.createdAt, latestDoc.createdAt),
+            ),
           )
           .returning();
       }
@@ -610,13 +614,19 @@ export async function updateArticleDraft({
   description,
   status,
   intercomArticleId,
+  submittedAt,
+  reviewedBy,
+  reviewedAt,
 }: {
   id: string;
   title?: string;
   content?: string;
   description?: string;
-  status?: 'draft' | 'published' | 'discarded';
+  status?: 'draft' | 'pending_review' | 'published' | 'discarded';
   intercomArticleId?: string;
+  submittedAt?: Date | null;
+  reviewedBy?: string | null;
+  reviewedAt?: Date | null;
 }) {
   try {
     const updates: Record<string, unknown> = { updatedAt: new Date() };
@@ -626,6 +636,9 @@ export async function updateArticleDraft({
     if (status !== undefined) updates.status = status;
     if (intercomArticleId !== undefined)
       updates.intercomArticleId = intercomArticleId;
+    if (submittedAt !== undefined) updates.submittedAt = submittedAt;
+    if (reviewedBy !== undefined) updates.reviewedBy = reviewedBy;
+    if (reviewedAt !== undefined) updates.reviewedAt = reviewedAt;
 
     const [result] = await db
       .update(articleDraft)
@@ -637,6 +650,32 @@ export async function updateArticleDraft({
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to update article draft',
+    );
+  }
+}
+
+export async function getArticleDraftsPendingReview() {
+  try {
+    return await db
+      .select({
+        id: articleDraft.id,
+        title: articleDraft.title,
+        description: articleDraft.description,
+        status: articleDraft.status,
+        userId: articleDraft.userId,
+        submittedAt: articleDraft.submittedAt,
+        createdAt: articleDraft.createdAt,
+        authorName: user.name,
+        authorEmail: user.email,
+      })
+      .from(articleDraft)
+      .innerJoin(user, eq(articleDraft.userId, user.id))
+      .where(eq(articleDraft.status, 'pending_review'))
+      .orderBy(asc(articleDraft.submittedAt));
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get pending review drafts',
     );
   }
 }

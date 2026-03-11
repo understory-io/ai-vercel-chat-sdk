@@ -18,6 +18,8 @@ interface DraftData {
   createdAt: string;
   updatedAt: string;
   intercomArticleId: string | null;
+  userId: string;
+  submittedAt: string | null;
 }
 
 interface IntercomAdmin {
@@ -39,8 +41,14 @@ let adminsCache: IntercomAdmin[] | null = null;
 
 export function PreviewClient({
   initialDraft,
+  currentUserId,
+  authorName,
+  authorEmail,
 }: {
   initialDraft: DraftData;
+  currentUserId: string | null;
+  authorName: string | null;
+  authorEmail: string | null;
 }) {
   const [draft, setDraft] = useState(initialDraft);
   const [editing, setEditing] = useState(false);
@@ -54,16 +62,26 @@ export function PreviewClient({
   const lastUpdatedAt = useRef(draft.updatedAt);
   const [editorView, setEditorView] = useState<EditorView | null>(null);
 
-  // Publish dialog state
-  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
-  const [publishing, setPublishing] = useState(false);
+  // Review action states
+  const [submitting, setSubmitting] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [requestingChanges, setRequestingChanges] = useState(false);
+
+  // Publish/approve dialog state
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
   const [collectionModalOpen, setCollectionModalOpen] = useState(false);
-  const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
+  const [selectedCollection, setSelectedCollection] =
+    useState<Collection | null>(null);
   const [collectionPath, setCollectionPath] = useState<Collection[]>([]);
   const [selectedAuthor, setSelectedAuthor] = useState<string>('');
   const [admins, setAdmins] = useState<IntercomAdmin[]>([]);
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(false);
   const [publishDescription, setPublishDescription] = useState('');
+
+  const isAuthor = currentUserId === draft.userId;
+  const isPendingReview = draft.status === 'pending_review';
+  const isDraft = draft.status === 'draft';
+  const isPublished = draft.status === 'published';
 
   // Render markdown to HTML client-side for preview
   const renderMarkdown = useCallback(async (content: string) => {
@@ -75,21 +93,39 @@ export function PreviewClient({
       const trimmed = line.trim();
 
       if (trimmed.startsWith('### ')) {
-        if (inList) { html += '</ul>'; inList = false; }
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
         html += `<h3>${trimmed.slice(4)}</h3>`;
       } else if (trimmed.startsWith('## ')) {
-        if (inList) { html += '</ul>'; inList = false; }
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
         html += `<h2>${trimmed.slice(3)}</h2>`;
       } else if (trimmed.startsWith('# ')) {
-        if (inList) { html += '</ul>'; inList = false; }
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
         html += `<h1>${trimmed.slice(2)}</h1>`;
       } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-        if (!inList) { html += '<ul>'; inList = true; }
+        if (!inList) {
+          html += '<ul>';
+          inList = true;
+        }
         html += `<li>${formatInline(trimmed.slice(2))}</li>`;
       } else if (trimmed === '') {
-        if (inList) { html += '</ul>'; inList = false; }
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
       } else {
-        if (inList) { html += '</ul>'; inList = false; }
+        if (inList) {
+          html += '</ul>';
+          inList = false;
+        }
         html += `<p>${formatInline(trimmed)}</p>`;
       }
     }
@@ -118,11 +154,13 @@ export function PreviewClient({
   useEffect(() => {
     const handleVisibility = () => setTabVisible(!document.hidden);
     document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
+    return () =>
+      document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
   useEffect(() => {
-    if (!watching || !tabVisible || draft.status !== 'draft' || editing) return;
+    if (!watching || !tabVisible || editing) return;
+    if (draft.status !== 'draft' && draft.status !== 'pending_review') return;
 
     const interval = setInterval(async () => {
       // Auto-stop after timeout
@@ -138,7 +176,7 @@ export function PreviewClient({
 
         if (updated.updatedAt !== lastUpdatedAt.current) {
           lastUpdatedAt.current = updated.updatedAt;
-          setDraft(updated);
+          setDraft((prev) => ({ ...prev, ...updated }));
           setEditTitle(updated.title);
           setEditContent(updated.content);
           setEditDescription(updated.description || '');
@@ -151,11 +189,10 @@ export function PreviewClient({
     return () => clearInterval(interval);
   }, [draft.id, draft.status, editing, watching, tabVisible]);
 
-  // Load admins when publish dialog opens
+  // Load admins when approve dialog opens
   useEffect(() => {
-    if (!publishDialogOpen) return;
+    if (!approveDialogOpen) return;
 
-    // Pre-fill description from draft
     setPublishDescription(draft.description || '');
 
     if (adminsCache) {
@@ -177,7 +214,7 @@ export function PreviewClient({
         toast({ type: 'error', description: 'Failed to load authors' });
       })
       .finally(() => setIsLoadingAdmins(false));
-  }, [publishDialogOpen, draft.description]);
+  }, [approveDialogOpen, draft.description]);
 
   async function handleSave() {
     setSaving(true);
@@ -194,13 +231,13 @@ export function PreviewClient({
 
       if (res.ok) {
         const updated = await res.json();
-        setDraft({
-          ...draft,
+        setDraft((prev) => ({
+          ...prev,
           title: updated.title,
           content: updated.content,
           description: updated.description,
           updatedAt: updated.updatedAt,
-        });
+        }));
         lastUpdatedAt.current = updated.updatedAt;
         setEditorView(null);
         setEditing(false);
@@ -213,15 +250,42 @@ export function PreviewClient({
     }
   }
 
-  function openPublishDialog() {
+  async function handleSubmitForReview() {
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/drafts/${draft.id}/submit-for-review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (res.ok) {
+        setDraft((prev) => ({
+          ...prev,
+          status: 'pending_review',
+          submittedAt: new Date().toISOString(),
+        }));
+        toast({ type: 'success', description: 'Submitted for review' });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          type: 'error',
+          description: err.error || 'Failed to submit for review',
+        });
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function openApproveDialog() {
     setSelectedCollection(null);
     setCollectionPath([]);
     setSelectedAuthor('');
     setPublishDescription(draft.description || '');
-    setPublishDialogOpen(true);
+    setApproveDialogOpen(true);
   }
 
-  async function handlePublish() {
+  async function handleApprove() {
     if (!selectedCollection) {
       toast({ type: 'error', description: 'Please select a collection' });
       return;
@@ -231,9 +295,9 @@ export function PreviewClient({
       return;
     }
 
-    setPublishing(true);
+    setApproving(true);
     try {
-      const res = await fetch(`/api/drafts/${draft.id}/publish`, {
+      const res = await fetch(`/api/drafts/${draft.id}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -244,11 +308,11 @@ export function PreviewClient({
       });
       if (res.ok) {
         const data = await res.json();
-        setDraft({ ...draft, status: 'published' });
-        setPublishDialogOpen(false);
+        setDraft((prev) => ({ ...prev, status: 'published' }));
+        setApproveDialogOpen(false);
         toast({
           type: 'success',
-          description: 'Draft saved to Intercom!',
+          description: 'Approved and published to Intercom!',
         });
         if (data.intercomUrl) {
           window.open(data.intercomUrl, '_blank');
@@ -257,11 +321,39 @@ export function PreviewClient({
         const err = await res.json().catch(() => ({}));
         toast({
           type: 'error',
-          description: err.error || 'Failed to save to Intercom',
+          description: err.error || 'Failed to approve',
         });
       }
     } finally {
-      setPublishing(false);
+      setApproving(false);
+    }
+  }
+
+  async function handleRequestChanges() {
+    setRequestingChanges(true);
+    try {
+      const res = await fetch(`/api/drafts/${draft.id}/request-changes`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        setDraft((prev) => ({
+          ...prev,
+          status: 'draft',
+          submittedAt: null,
+        }));
+        toast({
+          type: 'success',
+          description: 'Changes requested — sent back to author',
+        });
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast({
+          type: 'error',
+          description: err.error || 'Failed to request changes',
+        });
+      }
+    } finally {
+      setRequestingChanges(false);
     }
   }
 
@@ -270,7 +362,7 @@ export function PreviewClient({
       method: 'POST',
     });
     if (res.ok) {
-      setDraft({ ...draft, status: 'discarded' });
+      setDraft((prev) => ({ ...prev, status: 'discarded' }));
       toast({ type: 'success', description: 'Draft discarded' });
     }
   }
@@ -287,7 +379,34 @@ export function PreviewClient({
     setEditing(false);
   }
 
-  const isDraft = draft.status === 'draft';
+  const statusBadge = (() => {
+    switch (draft.status) {
+      case 'published':
+        return {
+          label: 'Published',
+          className:
+            'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+        };
+      case 'discarded':
+        return {
+          label: 'Discarded',
+          className:
+            'bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-zinc-500',
+        };
+      case 'pending_review':
+        return {
+          label: 'Pending Review',
+          className:
+            'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+        };
+      default:
+        return {
+          label: 'Draft',
+          className:
+            'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+        };
+    }
+  })();
 
   return (
     <div className="min-h-dvh bg-white dark:bg-zinc-950">
@@ -296,34 +415,19 @@ export function PreviewClient({
         <div className="max-w-3xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span
-              className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                draft.status === 'published'
-                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                  : draft.status === 'discarded'
-                    ? 'bg-gray-100 text-gray-500 dark:bg-zinc-800 dark:text-zinc-500'
-                    : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-              }`}
+              className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadge.className}`}
             >
-              {draft.status === 'published'
-                ? 'Saved to Intercom'
-                : draft.status === 'discarded'
-                  ? 'Discarded'
-                  : 'Draft'}
+              {statusBadge.label}
             </span>
             {editing && (
-              <span className="text-xs text-blue-500 font-medium">
-                Editing
-              </span>
+              <span className="text-xs text-blue-500 font-medium">Editing</span>
             )}
           </div>
           <div className="flex gap-2">
-            {isDraft && !editing && (
+            {/* Author actions for draft status */}
+            {isDraft && isAuthor && !editing && (
               <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={startEditing}
-                >
+                <Button variant="outline" size="sm" onClick={startEditing}>
                   Edit
                 </Button>
                 <Button
@@ -336,19 +440,17 @@ export function PreviewClient({
                 </Button>
                 <Button
                   size="sm"
-                  onClick={openPublishDialog}
+                  onClick={handleSubmitForReview}
+                  disabled={submitting}
                 >
-                  Save draft to Intercom
+                  {submitting ? 'Submitting...' : 'Submit for Review'}
                 </Button>
               </>
             )}
+            {/* Editing actions */}
             {editing && (
               <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={cancelEditing}
-                >
+                <Button variant="outline" size="sm" onClick={cancelEditing}>
                   Cancel
                 </Button>
                 <Button size="sm" onClick={handleSave} disabled={saving}>
@@ -356,29 +458,62 @@ export function PreviewClient({
                 </Button>
               </>
             )}
-            {draft.status === 'published' && (
+            {/* Reviewer actions for pending_review */}
+            {isPendingReview && !isAuthor && currentUserId && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRequestChanges}
+                  disabled={requestingChanges}
+                >
+                  {requestingChanges ? 'Sending...' : 'Request Changes'}
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={openApproveDialog}
+                  disabled={approving}
+                >
+                  Approve
+                </Button>
+              </>
+            )}
+            {/* Published badge */}
+            {isPublished && (
               <span className="text-sm text-green-600 dark:text-green-400">
-                Saved to Intercom
+                Published to Intercom
               </span>
             )}
           </div>
         </div>
       </div>
 
-      {/* Publish dialog */}
-      {publishDialogOpen && (
+      {/* Submitted banner for pending_review */}
+      {isPendingReview && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-900/40">
+          <div className="max-w-3xl mx-auto px-6 py-2 text-sm text-blue-700 dark:text-blue-300">
+            Submitted by {authorName || authorEmail || 'Unknown'}
+            {draft.submittedAt &&
+              ` on ${new Date(draft.submittedAt).toLocaleDateString()}`}
+          </div>
+        </div>
+      )}
+
+      {/* Approve dialog (collection/author picker) */}
+      {approveDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/50"
-            onClick={() => setPublishDialogOpen(false)}
+            onClick={() => setApproveDialogOpen(false)}
           />
           <div className="relative bg-white dark:bg-zinc-900 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-5">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold dark:text-zinc-50">
-                Save draft to Intercom
+                Approve & Publish to Intercom
               </h2>
               <button
-                onClick={() => setPublishDialogOpen(false)}
+                type="button"
+                onClick={() => setApproveDialogOpen(false)}
                 className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300"
               >
                 &times;
@@ -404,7 +539,10 @@ export function PreviewClient({
                     {collectionPath.length > 0 && (
                       <p className="text-xs text-gray-500 dark:text-zinc-400 flex items-center gap-0.5 truncate">
                         {collectionPath.map((c, i) => (
-                          <span key={c.id} className="flex items-center gap-0.5">
+                          <span
+                            key={c.id}
+                            className="flex items-center gap-0.5"
+                          >
                             {i > 0 && <ChevronRight className="size-3" />}
                             {c.name}
                           </span>
@@ -447,7 +585,9 @@ export function PreviewClient({
               {isLoadingAdmins ? (
                 <div className="flex items-center gap-2 py-2">
                   <Loader2 className="size-4 animate-spin text-gray-400" />
-                  <span className="text-sm text-gray-400">Loading authors...</span>
+                  <span className="text-sm text-gray-400">
+                    Loading authors...
+                  </span>
                 </div>
               ) : admins.length === 0 ? (
                 <p className="text-sm text-red-500">
@@ -474,26 +614,22 @@ export function PreviewClient({
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() => setPublishDialogOpen(false)}
+                onClick={() => setApproveDialogOpen(false)}
               >
                 Cancel
               </Button>
               <Button
                 className="flex-1"
-                onClick={handlePublish}
-                disabled={
-                  publishing ||
-                  !selectedCollection ||
-                  !selectedAuthor
-                }
+                onClick={handleApprove}
+                disabled={approving || !selectedCollection || !selectedAuthor}
               >
-                {publishing ? (
+                {approving ? (
                   <>
                     <Loader2 className="size-4 animate-spin mr-2" />
-                    Saving...
+                    Publishing...
                   </>
                 ) : (
-                  'Save to Intercom'
+                  'Approve & Publish'
                 )}
               </Button>
             </div>
@@ -501,7 +637,7 @@ export function PreviewClient({
         </div>
       )}
 
-      {/* Collection selector modal (reused from main app) */}
+      {/* Collection selector modal */}
       <CollectionSelectorModal
         isOpen={collectionModalOpen}
         onClose={() => setCollectionModalOpen(false)}
@@ -527,9 +663,7 @@ export function PreviewClient({
             <input
               type="text"
               value={editDescription}
-              onChange={(e) =>
-                setEditDescription(e.target.value.slice(0, 255))
-              }
+              onChange={(e) => setEditDescription(e.target.value.slice(0, 255))}
               placeholder="Short description for SEO (optional, max 255 chars)"
               className="w-full text-base border-0 bg-transparent px-0 py-1 focus:outline-none text-gray-500 dark:text-zinc-400 placeholder:text-gray-300 dark:placeholder:text-zinc-600"
             />
@@ -585,8 +719,5 @@ function formatInline(text: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(
-      /\[(.+?)\]\((.+?)\)/g,
-      '<a href="$2">$1</a>',
-    );
+    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
 }

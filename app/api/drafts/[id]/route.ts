@@ -17,7 +17,11 @@ export async function GET(
     return Response.json({ error: 'Draft not found' }, { status: 404 });
   }
 
-  if (draft.userId !== authResult.userId) {
+  // Only owner can view drafts; pending_review and published are visible to all authenticated users
+  if (
+    draft.status === 'draft' &&
+    draft.userId !== authResult.userId
+  ) {
     return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
 

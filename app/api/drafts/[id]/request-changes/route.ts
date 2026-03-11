@@ -17,18 +17,20 @@ export async function POST(
     return Response.json({ error: 'Draft not found' }, { status: 404 });
   }
 
-  if (draft.userId !== authResult.userId) {
-    return Response.json({ error: 'Forbidden' }, { status: 403 });
-  }
-
-  if (draft.status !== 'draft' && draft.status !== 'pending_review') {
+  if (draft.status !== 'pending_review') {
     return Response.json(
-      { error: `Draft is already ${draft.status}` },
+      { error: `Draft is not pending review (status: ${draft.status})` },
       { status: 400 },
     );
   }
 
-  await updateArticleDraft({ id: draft.id, status: 'discarded' });
+  await updateArticleDraft({
+    id: draft.id,
+    status: 'draft',
+    reviewedBy: authResult.userId,
+    reviewedAt: new Date(),
+    submittedAt: null,
+  });
 
-  return Response.json({ success: true });
+  return Response.json({ success: true, status: 'draft' });
 }

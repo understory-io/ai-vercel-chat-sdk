@@ -2,11 +2,14 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import {
   createArticleDraft,
+  db,
   getArticleDraft,
   getArticleDraftsByUserId,
   updateArticleDraft,
 } from '@/lib/db/queries';
-import { markdownToHtml } from '@/lib/intercom/markdown-to-html';
+import { user as userTable } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { notifySlackForReview } from '@/lib/slack/notify-review';
 
 export function registerTools(server: McpServer, userId: string) {
   server.tool(
@@ -15,7 +18,10 @@ export function registerTools(server: McpServer, userId: string) {
     {
       title: z.string().describe('Article title'),
       content: z.string().describe('Article content in Markdown'),
-      description: z.string().optional().describe('Short description (max 255 chars)'),
+      description: z
+        .string()
+        .optional()
+        .describe('Short description (max 255 chars)'),
     },
     async ({ title, content, description }) => {
       const draft = await createArticleDraft({
@@ -25,7 +31,9 @@ export function registerTools(server: McpServer, userId: string) {
         description: description?.slice(0, 255),
       });
 
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://product-documentation-generator.vercel.app';
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ||
+        'https://product-documentation-generator.vercel.app';
 
       return {
         content: [
@@ -49,7 +57,7 @@ export function registerTools(server: McpServer, userId: string) {
     'List your article drafts',
     {
       status: z
-        .enum(['draft', 'published', 'discarded'])
+        .enum(['draft', 'pending_review', 'published', 'discarded'])
         .optional()
         .describe('Filter by status'),
     },
@@ -95,7 +103,9 @@ export function registerTools(server: McpServer, userId: string) {
       }
       if (draft.userId !== userId) {
         return {
-          content: [{ type: 'text' as const, text: 'Forbidden: not your draft' }],
+          content: [
+            { type: 'text' as const, text: 'Forbidden: not your draft' },
+          ],
           isError: true,
         };
       }
@@ -127,7 +137,10 @@ export function registerTools(server: McpServer, userId: string) {
       id: z.string().uuid().describe('Draft ID'),
       title: z.string().optional().describe('New title'),
       content: z.string().optional().describe('New content in Markdown'),
-      description: z.string().optional().describe('New description (max 255 chars)'),
+      description: z
+        .string()
+        .optional()
+        .describe('New description (max 255 chars)'),
     },
     async ({ id, title, content, description }) => {
       const draft = await getArticleDraft({ id });
@@ -139,13 +152,20 @@ export function registerTools(server: McpServer, userId: string) {
       }
       if (draft.userId !== userId) {
         return {
-          content: [{ type: 'text' as const, text: 'Forbidden: not your draft' }],
+          content: [
+            { type: 'text' as const, text: 'Forbidden: not your draft' },
+          ],
           isError: true,
         };
       }
-      if (draft.status === 'discarded') {
+      if (draft.status === 'discarded' || draft.status === 'pending_review') {
         return {
-          content: [{ type: 'text' as const, text: 'Cannot edit a discarded draft' }],
+          content: [
+            {
+              type: 'text' as const,
+              text: `Cannot edit a ${draft.status} draft`,
+            },
+          ],
           isError: true,
         };
       }
@@ -174,15 +194,18 @@ export function registerTools(server: McpServer, userId: string) {
   );
 
   server.tool(
-    'publish_draft',
-    'Publish a draft to Intercom as a help center article',
+    'submit_for_review',
+    'Submit a draft for CS team review. Notifies the team in Slack with a link to review the article in the app.',
     {
       id: z.string().uuid().describe('Draft ID'),
-      collectionId: z.string().optional().describe('Intercom collection ID to place article in'),
-      authorId: z.string().optional().describe('Intercom admin ID to set as author'),
-      description: z.string().optional().describe('Override description for the published article'),
+      reviewerSlackId: z
+        .string()
+        .optional()
+        .describe(
+          'Slack user ID to tag as reviewer in the notification. Use /api/slack/members to list available users.',
+        ),
     },
-    async ({ id, collectionId, authorId, description }) => {
+    async ({ id, reviewerSlackId }) => {
       const draft = await getArticleDraft({ id });
       if (!draft) {
         return {
@@ -192,7 +215,9 @@ export function registerTools(server: McpServer, userId: string) {
       }
       if (draft.userId !== userId) {
         return {
-          content: [{ type: 'text' as const, text: 'Forbidden: not your draft' }],
+          content: [
+            { type: 'text' as const, text: 'Forbidden: not your draft' },
+          ],
           isError: true,
         };
       }
@@ -205,95 +230,31 @@ export function registerTools(server: McpServer, userId: string) {
         };
       }
 
-      const accessToken = process.env.INTERCOM_ACCESS_TOKEN;
-      const workspaceId = process.env.INTERCOM_WORKSPACE_ID;
-
-      if (!accessToken || !workspaceId) {
-        return {
-          content: [{ type: 'text' as const, text: 'Intercom not configured' }],
-          isError: true,
-        };
-      }
-
-      const finalDescription = (description ?? draft.description)?.slice(0, 255);
-
-      let resolvedAuthorId = authorId ? Number.parseInt(authorId) : undefined;
-
-      if (!resolvedAuthorId) {
-        const adminsRes = await fetch('https://api.intercom.io/admins', {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: 'application/json',
-            'Intercom-Version': '2.14',
-          },
-        });
-
-        if (adminsRes.ok) {
-          const adminsData = await adminsRes.json();
-          const admins = adminsData.admins || [];
-          if (admins.length > 0) {
-            resolvedAuthorId = admins[0].id;
-          }
-        }
-
-        if (!resolvedAuthorId) {
-          return {
-            content: [
-              { type: 'text' as const, text: 'No Intercom admin found to set as author' },
-            ],
-            isError: true,
-          };
-        }
-      }
-
-      const htmlContent = await markdownToHtml(draft.content);
-
-      const articlePayload: Record<string, unknown> = {
-        title: draft.title,
-        body: htmlContent,
-        author_id: resolvedAuthorId,
-        state: 'draft',
-      };
-
-      if (collectionId) {
-        articlePayload.parent_type = 'collection';
-        articlePayload.parent_id = Number.parseInt(collectionId);
-      }
-
-      if (finalDescription) {
-        articlePayload.description = finalDescription;
-      }
-
-      const response = await fetch('https://api.intercom.io/articles', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-          'Intercom-Version': '2.14',
-        },
-        body: JSON.stringify(articlePayload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        return {
-          content: [
-            {
-              type: 'text' as const,
-              text: `Failed to publish to Intercom: ${JSON.stringify(errorData)}`,
-            },
-          ],
-          isError: true,
-        };
-      }
-
-      const articleData = await response.json();
-
+      const now = new Date();
       await updateArticleDraft({
         id: draft.id,
-        status: 'published',
-        intercomArticleId: String(articleData.id),
+        status: 'pending_review',
+        submittedAt: now,
+      });
+
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ||
+        'https://product-documentation-generator.vercel.app';
+
+      const reviewUrl = `${baseUrl}/preview/${draft.id}`;
+
+      // Look up user email for the notification
+      const [dbUser] = await db
+        .select({ email: userTable.email })
+        .from(userTable)
+        .where(eq(userTable.id, userId));
+
+      // Notify CS in Slack (fire-and-forget)
+      notifySlackForReview({
+        title: draft.title,
+        submittedBy: dbUser?.email ?? userId,
+        reviewUrl,
+        reviewerSlackId,
       });
 
       return {
@@ -302,8 +263,8 @@ export function registerTools(server: McpServer, userId: string) {
             type: 'text' as const,
             text: JSON.stringify({
               success: true,
-              intercomArticleId: articleData.id,
-              intercomUrl: `https://app.intercom.com/a/apps/${workspaceId}/articles/${articleData.id}`,
+              status: 'pending_review',
+              reviewUrl,
             }),
           },
         ],
@@ -327,11 +288,13 @@ export function registerTools(server: McpServer, userId: string) {
       }
       if (draft.userId !== userId) {
         return {
-          content: [{ type: 'text' as const, text: 'Forbidden: not your draft' }],
+          content: [
+            { type: 'text' as const, text: 'Forbidden: not your draft' },
+          ],
           isError: true,
         };
       }
-      if (draft.status !== 'draft') {
+      if (draft.status !== 'draft' && draft.status !== 'pending_review') {
         return {
           content: [
             { type: 'text' as const, text: `Draft is already ${draft.status}` },
