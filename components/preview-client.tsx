@@ -78,6 +78,10 @@ export function PreviewClient({
   const [isLoadingAdmins, setIsLoadingAdmins] = useState(false);
   const [publishDescription, setPublishDescription] = useState('');
 
+  // Request changes dialog state
+  const [changesDialogOpen, setChangesDialogOpen] = useState(false);
+  const [changesNote, setChangesNote] = useState('');
+
   const isAuthor = currentUserId === draft.userId;
   const isPendingReview = draft.status === 'pending_review';
   const isDraft = draft.status === 'draft';
@@ -329,11 +333,18 @@ export function PreviewClient({
     }
   }
 
+  function openChangesDialog() {
+    setChangesNote('');
+    setChangesDialogOpen(true);
+  }
+
   async function handleRequestChanges() {
     setRequestingChanges(true);
     try {
       const res = await fetch(`/api/drafts/${draft.id}/request-changes`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: changesNote || undefined }),
       });
       if (res.ok) {
         setDraft((prev) => ({
@@ -341,9 +352,10 @@ export function PreviewClient({
           status: 'draft',
           submittedAt: null,
         }));
+        setChangesDialogOpen(false);
         toast({
           type: 'success',
-          description: 'Changes requested — sent back to author',
+          description: 'Changes requested — author notified on Slack',
         });
       } else {
         const err = await res.json().catch(() => ({}));
@@ -464,10 +476,9 @@ export function PreviewClient({
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleRequestChanges}
-                  disabled={requestingChanges}
+                  onClick={openChangesDialog}
                 >
-                  {requestingChanges ? 'Sending...' : 'Request Changes'}
+                  Request Changes
                 </Button>
                 <Button
                   size="sm"
@@ -630,6 +641,72 @@ export function PreviewClient({
                   </>
                 ) : (
                   'Approve & Publish'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Request changes dialog */}
+      {changesDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setChangesDialogOpen(false)}
+          />
+          <div className="relative bg-white dark:bg-zinc-900 rounded-xl shadow-xl w-full max-w-md mx-4 p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold dark:text-zinc-50">
+                Request Changes
+              </h2>
+              <button
+                type="button"
+                onClick={() => setChangesDialogOpen(false)}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300"
+              >
+                &times;
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-500 dark:text-zinc-400">
+              The author will be notified via Slack DM with your note.
+            </p>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700 dark:text-zinc-300">
+                Note (optional)
+              </label>
+              <textarea
+                value={changesNote}
+                onChange={(e) => setChangesNote(e.target.value)}
+                placeholder="What needs to be changed?"
+                rows={4}
+                className="w-full text-sm border rounded-lg p-3 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setChangesDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={handleRequestChanges}
+                disabled={requestingChanges}
+              >
+                {requestingChanges ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin mr-2" />
+                    Sending...
+                  </>
+                ) : (
+                  'Request Changes'
                 )}
               </Button>
             </div>
