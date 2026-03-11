@@ -78,11 +78,11 @@ function getFileExtension(filename: string): string {
 function truncateFileName(filename: string, maxLength = 15): string {
   const extension = getFileExtension(filename);
   const nameWithoutExt = filename.substring(0, filename.lastIndexOf('.'));
-  
+
   if (nameWithoutExt.length <= maxLength) {
     return filename;
   }
-  
+
   const truncated = `${nameWithoutExt.substring(0, maxLength - 3)}...`;
   return `${truncated}.${extension}`;
 }
@@ -105,26 +105,26 @@ function getFileTypeFromMimeType(mimeType: string): string {
 function getFileTypeFromExtension(filename: string): string {
   const extension = getFileExtension(filename);
   const extToType: Record<string, string> = {
-    'pdf': 'pdf',
-    'csv': 'csv', 
-    'json': 'json',
-    'txt': 'txt',
-    'md': 'md',
-    'markdown': 'md',
-    'svg': 'svg',
+    pdf: 'pdf',
+    csv: 'csv',
+    json: 'json',
+    txt: 'txt',
+    md: 'md',
+    markdown: 'md',
+    svg: 'svg',
   };
-  
+
   return extToType[extension] || 'default';
 }
 
-export function FileAttachment({ 
-  attachment, 
-  isUploading = false, 
+export function FileAttachment({
+  attachment,
+  isUploading = false,
   uploadProgress = 0,
-  onRemove 
+  onRemove,
 }: FileAttachmentProps) {
   const { name, contentType, type } = attachment;
-  
+
   // Check if this is a Notion document first
   if (type === 'notion') {
     const config = fileTypeConfig.notion;
@@ -135,9 +135,11 @@ export function FileAttachment({
 
     return (
       <div className="relative group">
-        <div className={`border rounded-lg ${
-          hasContentError ? 'border-red-300 bg-red-50/10' : 'border-border/30'
-        }`}>
+        <div
+          className={`border rounded-lg ${
+            hasContentError ? 'border-red-300 bg-red-50/10' : 'border-border/30'
+          }`}
+        >
           <div className="h-16 max-w-[200px] min-w-[120px] bg-muted rounded-lg flex items-center gap-3 px-3 py-2">
             {/* Notion Icon with Loading State */}
             <div className="relative shrink-0">
@@ -158,7 +160,9 @@ export function FileAttachment({
                   </svg>
                 </div>
               ) : (
-                <div className={`size-8 rounded flex items-center justify-center ${config.color} ${config.textColor}`}>
+                <div
+                  className={`size-8 rounded flex items-center justify-center ${config.color} ${config.textColor}`}
+                >
                   <NotionIcon size={14} />
                 </div>
               )}
@@ -166,11 +170,18 @@ export function FileAttachment({
 
             {/* File info */}
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-foreground truncate" title={name}>
+              <div
+                className="text-xs font-medium text-foreground truncate"
+                title={name}
+              >
                 {displayName}
               </div>
               <div className="text-[10px] text-muted-foreground uppercase">
-                {isContentLoading ? 'Loading...' : hasContentError ? 'Error' : 'Loaded'}
+                {isContentLoading
+                  ? 'Loading...'
+                  : hasContentError
+                    ? 'Error'
+                    : 'Loaded'}
               </div>
             </div>
 
@@ -199,13 +210,18 @@ export function FileAttachment({
       <div className="relative group">
         <div className="border rounded-lg border-border/30">
           <div className="h-16 max-w-[200px] min-w-[120px] bg-muted rounded-lg flex items-center gap-3 px-3 py-2">
-            <div className={`size-8 rounded flex items-center justify-center ${config.color} ${config.textColor}`}>
+            <div
+              className={`size-8 rounded flex items-center justify-center ${config.color} ${config.textColor}`}
+            >
               <IntercomIcon size={14} />
             </div>
 
             {/* File info */}
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-medium text-foreground truncate" title={name}>
+              <div
+                className="text-xs font-medium text-foreground truncate"
+                title={name}
+              >
                 {displayName}
               </div>
               <div className="text-[10px] text-muted-foreground uppercase">
@@ -228,14 +244,16 @@ export function FileAttachment({
       </div>
     );
   }
-  
+
   // Try to detect file type from MIME type first, then fallback to extension
   let fileType = contentType ? getFileTypeFromMimeType(contentType) : 'default';
   if (fileType === 'default' && name) {
     fileType = getFileTypeFromExtension(name);
   }
-  
-  const config = fileTypeConfig[fileType as keyof typeof fileTypeConfig] || fileTypeConfig.default;
+
+  const config =
+    fileTypeConfig[fileType as keyof typeof fileTypeConfig] ||
+    fileTypeConfig.default;
   const extension = getFileExtension(name || 'file');
   const displayName = truncateFileName(name || 'file');
 
@@ -243,67 +261,72 @@ export function FileAttachment({
     <div className="relative group">
       <div className="border border-border/30 rounded-lg">
         <div className="h-16 max-w-[200px] min-w-[120px] bg-muted rounded-lg flex items-center gap-3 px-3 py-2">
-        {/* Icon / Progress */}
-        <div className="relative shrink-0">
-          {isUploading ? (
-            <>
-              {/* Progress circle */}
-              <svg className="size-8 -rotate-90">
-                <circle
-                  cx="16"
-                  cy="16"
-                  r="14"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="none"
-                  className="text-muted-foreground/20"
-                />
-                <circle
-                  cx="16"
-                  cy="16"
-                  r="14"
-                  stroke={config.progressColor}
-                  strokeWidth="2"
-                  fill="none"
-                  strokeDasharray={`${2 * Math.PI * 14}`}
-                  strokeDashoffset={`${2 * Math.PI * 14 * (1 - uploadProgress / 100)}`}
-                  className="transition-all duration-300"
-                />
-              </svg>
-              {/* Loading text in center */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-[10px] text-muted-foreground font-medium">
-                  {Math.round(uploadProgress)}%
-                </span>
+          {/* Icon / Progress */}
+          <div className="relative shrink-0">
+            {isUploading ? (
+              <>
+                {/* Progress circle */}
+                <svg className="size-8 -rotate-90">
+                  <circle
+                    cx="16"
+                    cy="16"
+                    r="14"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    fill="none"
+                    className="text-muted-foreground/20"
+                  />
+                  <circle
+                    cx="16"
+                    cy="16"
+                    r="14"
+                    stroke={config.progressColor}
+                    strokeWidth="2"
+                    fill="none"
+                    strokeDasharray={`${2 * Math.PI * 14}`}
+                    strokeDashoffset={`${2 * Math.PI * 14 * (1 - uploadProgress / 100)}`}
+                    className="transition-all duration-300"
+                  />
+                </svg>
+                {/* Loading text in center */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-[10px] text-muted-foreground font-medium">
+                    {Math.round(uploadProgress)}%
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div
+                className={`size-8 rounded flex items-center justify-center ${config.color} ${config.textColor}`}
+              >
+                <span className="text-xs font-bold">{config.abbreviation}</span>
               </div>
-            </>
-          ) : (
-            <div className={`size-8 rounded flex items-center justify-center ${config.color} ${config.textColor}`}>
-              <span className="text-xs font-bold">{config.abbreviation}</span>
+            )}
+          </div>
+
+          {/* File info */}
+          <div className="flex-1 min-w-0">
+            <div
+              className="text-xs font-medium text-foreground truncate"
+              title={name}
+            >
+              {displayName}
             </div>
+            <div className="text-[10px] text-muted-foreground uppercase">
+              {extension}
+            </div>
+          </div>
+
+          {/* Remove button */}
+          {!isUploading && onRemove && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="absolute -top-1 -right-1 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <X className="size-3" />
+            </button>
           )}
-        </div>
-
-        {/* File info */}
-        <div className="flex-1 min-w-0">
-          <div className="text-xs font-medium text-foreground truncate" title={name}>
-            {displayName}
-          </div>
-          <div className="text-[10px] text-muted-foreground uppercase">
-            {extension}
-          </div>
-        </div>
-
-        {/* Remove button */}
-        {!isUploading && onRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="absolute -top-1 -right-1 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-          >
-            <X className="size-3" />
-          </button>
-        )}
         </div>
       </div>
     </div>

@@ -84,13 +84,16 @@ const PurePreviewMessage = ({
             {attachmentsFromMessage.length > 0 && (
               <div
                 data-testid={`message-attachments`}
-                className={cn("grid gap-2 max-w-2xl", {
+                className={cn('grid gap-2 max-w-2xl', {
                   'justify-self-end ml-auto': message.role === 'user',
                   'justify-self-start': message.role === 'assistant',
                   'grid-cols-1': attachmentsFromMessage.length === 1,
                   'grid-cols-2': attachmentsFromMessage.length === 2,
-                  'grid-cols-3': attachmentsFromMessage.length >= 3 && attachmentsFromMessage.length <= 6,
-                  'grid-cols-3 sm:grid-cols-4 lg:grid-cols-6': attachmentsFromMessage.length > 6
+                  'grid-cols-3':
+                    attachmentsFromMessage.length >= 3 &&
+                    attachmentsFromMessage.length <= 6,
+                  'grid-cols-3 sm:grid-cols-4 lg:grid-cols-6':
+                    attachmentsFromMessage.length > 6,
                 })}
               >
                 {attachmentsFromMessage.map((attachment) => (
@@ -123,9 +126,12 @@ const PurePreviewMessage = ({
               if (type === 'text') {
                 if (mode === 'view') {
                   return (
-                    <div key={key} className={cn("flex flex-row gap-2 items-start", {
-                      'flex-row-reverse': message.role === 'user'
-                    })}>
+                    <div
+                      key={key}
+                      className={cn('flex flex-row gap-2 items-start', {
+                        'flex-row-reverse': message.role === 'user',
+                      })}
+                    >
                       <div
                         data-testid="message-content"
                         className={cn('flex flex-col gap-4', {
@@ -244,7 +250,7 @@ const PurePreviewMessage = ({
                         type="update"
                         args={{
                           id: input.id,
-                          description: input.content || input.title || ''
+                          description: input.content || input.title || '',
                         }}
                         isReadonly={isReadonly}
                       />
@@ -373,10 +379,10 @@ export const ThinkingMessage = () => {
         <div className="size-8 flex items-center rounded-full justify-center ring-1 shrink-0 ring-border bg-background">
           <motion.div
             animate={{ rotate: 360 }}
-            transition={{ 
-              duration: 2, 
-              repeat: Number.POSITIVE_INFINITY, 
-              ease: "linear" 
+            transition={{
+              duration: 2,
+              repeat: Number.POSITIVE_INFINITY,
+              ease: 'linear',
             }}
             className="translate-y-px"
           >
@@ -392,7 +398,7 @@ export const ThinkingMessage = () => {
               transition={{
                 duration: 1.5,
                 repeat: Number.POSITIVE_INFINITY,
-                ease: "easeInOut"
+                ease: 'easeInOut',
               }}
             >
               AI is responding...
@@ -404,13 +410,13 @@ export const ThinkingMessage = () => {
                   className="size-2 bg-muted-foreground rounded-full"
                   animate={{
                     y: [0, -8, 0],
-                    opacity: [0.4, 1, 0.4]
+                    opacity: [0.4, 1, 0.4],
                   }}
                   transition={{
                     duration: 1.2,
                     repeat: Number.POSITIVE_INFINITY,
                     delay: i * 0.2,
-                    ease: "easeInOut"
+                    ease: 'easeInOut',
                   }}
                 />
               ))}

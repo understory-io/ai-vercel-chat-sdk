@@ -6,23 +6,25 @@ export async function GET(request: NextRequest) {
   if (!accessToken) {
     return NextResponse.json(
       { error: 'Intercom access token not configured' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
   try {
     const allCollections: any[] = [];
-    let nextUrl: string | null = 'https://api.intercom.io/help_center/collections';
+    let nextUrl: string | null =
+      'https://api.intercom.io/help_center/collections';
     let pageCount = 0;
 
     // Fetch all pages of collections
-    while (nextUrl && pageCount < 10) { // Safety limit of 10 pages
+    while (nextUrl && pageCount < 10) {
+      // Safety limit of 10 pages
       pageCount++;
 
       const response: Response = await fetch(nextUrl, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Accept': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+          Accept: 'application/json',
           'Intercom-Version': '2.14',
         },
       });
@@ -32,7 +34,7 @@ export async function GET(request: NextRequest) {
         console.error('Intercom API error:', errorData);
         return NextResponse.json(
           { error: `Failed to fetch collections: ${response.statusText}` },
-          { status: response.status }
+          { status: response.status },
         );
       }
 
@@ -46,11 +48,11 @@ export async function GET(request: NextRequest) {
 
     // Transform collections into a tree structure for easier navigation
     const collections = allCollections;
-    
+
     // Group collections by parent_id for tree building
     const collectionMap = new Map();
     const rootCollections: any[] = [];
-    
+
     // First pass: create map of all collections
     collections.forEach((collection: any) => {
       collectionMap.set(collection.id, {
@@ -58,14 +60,14 @@ export async function GET(request: NextRequest) {
         name: collection.name,
         description: collection.description,
         parent_id: collection.parent_id,
-        children: []
+        children: [],
       });
     });
-    
+
     // Second pass: build tree structure
     collections.forEach((collection: any) => {
       const collectionData = collectionMap.get(collection.id);
-      
+
       if (collection.parent_id) {
         // Has parent, add to parent's children
         const parent = collectionMap.get(collection.parent_id);
@@ -80,14 +82,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       collections: rootCollections,
-      flat_collections: Array.from(collectionMap.values()) // Also provide flat structure
+      flat_collections: Array.from(collectionMap.values()), // Also provide flat structure
     });
-
   } catch (error) {
     console.error('Error fetching collections:', error);
     return NextResponse.json(
       { error: 'Failed to fetch collections' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

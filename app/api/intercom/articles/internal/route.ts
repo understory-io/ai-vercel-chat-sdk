@@ -20,7 +20,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { title, content, authorId, contentAiFolderId } = await request.json();
+    const { title, content, authorId, contentAiFolderId } =
+      await request.json();
 
     if (!title || !content || !authorId) {
       return NextResponse.json(
@@ -75,7 +76,9 @@ export async function POST(request: NextRequest) {
       article: {
         id: articleData.id,
         title: articleData.title,
-        url: `https://app.intercom.com/a/apps/${workspaceId}/articles/${articleData.id}`,
+        url:
+          articleData.url ||
+          `https://app.intercom.com/a/apps/${articleData.workspace_id || process.env.INTERCOM_APP_ID || workspaceId}/knowledge-hub/all-content?searchTerm=${encodeURIComponent(articleData.title)}`,
       },
     });
   } catch (error) {

@@ -4,7 +4,9 @@ import { mcpOAuthClient, mcpAuthCode } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://product-documentation-generator.vercel.app';
+const BASE_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  'https://product-documentation-generator.vercel.app';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -18,14 +20,20 @@ export async function GET(request: Request) {
 
   if (!clientId || !redirectUri || !codeChallenge || !state) {
     return NextResponse.json(
-      { error: 'invalid_request', error_description: 'Missing required parameters' },
+      {
+        error: 'invalid_request',
+        error_description: 'Missing required parameters',
+      },
       { status: 400 },
     );
   }
 
   if (codeChallengeMethod !== 'S256') {
     return NextResponse.json(
-      { error: 'invalid_request', error_description: 'Only S256 code_challenge_method is supported' },
+      {
+        error: 'invalid_request',
+        error_description: 'Only S256 code_challenge_method is supported',
+      },
       { status: 400 },
     );
   }
@@ -73,7 +81,10 @@ export async function GET(request: Request) {
   const googleAuthUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
   // biome-ignore lint: Forbidden non-null assertion.
   googleAuthUrl.searchParams.set('client_id', process.env.GOOGLE_CLIENT_ID!);
-  googleAuthUrl.searchParams.set('redirect_uri', `${BASE_URL}/api/mcp/callback`);
+  googleAuthUrl.searchParams.set(
+    'redirect_uri',
+    `${BASE_URL}/api/mcp/callback`,
+  );
   googleAuthUrl.searchParams.set('response_type', 'code');
   googleAuthUrl.searchParams.set('scope', 'openid email profile');
   googleAuthUrl.searchParams.set('hd', 'understory.io');

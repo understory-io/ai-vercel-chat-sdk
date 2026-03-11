@@ -60,7 +60,11 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
     const { from, to } = state.selection;
 
     // Check if there's already a link at the selection
-    const existingLink = state.doc.rangeHasMark(from, to, state.schema.marks.link);
+    const existingLink = state.doc.rangeHasMark(
+      from,
+      to,
+      state.schema.marks.link,
+    );
 
     if (existingLink) {
       // Remove existing link
@@ -70,7 +74,9 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
     } else {
       // Show link input
       const selectedText = state.doc.textBetween(from, to);
-      const defaultUrl = selectedText.startsWith('http') ? selectedText : 'https://';
+      const defaultUrl = selectedText.startsWith('http')
+        ? selectedText
+        : 'https://';
       setLinkUrl(defaultUrl);
       setShowLinkInput(true);
       // Focus the input after a brief delay to ensure it's rendered
@@ -130,7 +136,10 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
 
     for (let i = $from.depth; i >= 0; i--) {
       const node = $from.node(i);
-      if (node.type.name === 'bullet_list' || node.type.name === 'ordered_list') {
+      if (
+        node.type.name === 'bullet_list' ||
+        node.type.name === 'ordered_list'
+      ) {
         currentListType = node.type.name;
         listDepth = i;
         break;
@@ -149,13 +158,13 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
       // Create new list with same content but different type
       const newList = state.schema.nodes[listType].create(
         null,
-        listNode.content
+        listNode.content,
       );
 
       const tr = state.tr.replaceWith(
         listPos,
         listPos + listNode.nodeSize,
-        newList
+        newList,
       );
 
       dispatch(tr);
@@ -175,7 +184,6 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
   const toggleOrderedList = () => {
     applyListType('ordered_list');
   };
-
 
   const isMarkActive = (markType: any) => {
     if (!editorView) return false;
@@ -250,129 +258,139 @@ export function EditorToolbar({ editorView }: EditorToolbarProps) {
         <>
           {/* Text Formatting */}
           <ToggleGroup type="multiple" className="gap-0.5">
-          <ToggleGroupItem
-            value="bold"
-            aria-label="Toggle bold"
-            onClick={toggleBold}
-            className={cn(
-              "h-9 w-9 p-0 rounded-lg transition-all duration-200",
-              editorView && isMarkActive(editorView.state.schema.marks.strong) && "bg-primary text-primary-foreground"
-            )}
-          >
-            <Bold className="size-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="italic"
-            aria-label="Toggle italic"
-            onClick={toggleItalic}
-            className={cn(
-              "h-9 w-9 p-0 rounded-lg transition-all duration-200",
-              editorView && isMarkActive(editorView.state.schema.marks.em) && "bg-primary text-primary-foreground"
-            )}
-          >
-            <Italic className="size-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="underline"
-            aria-label="Toggle underline"
-            onClick={toggleUnderline}
-            className={cn(
-              "h-9 w-9 p-0 rounded-lg transition-all duration-200",
-              editorView && isMarkActive(editorView.state.schema.marks.code) && "bg-primary text-primary-foreground"
-            )}
-          >
-            <Underline className="size-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="link"
-            aria-label="Add link"
-            onClick={toggleLink}
-            className={cn(
-              "h-9 w-9 p-0 rounded-lg transition-all duration-200",
-              editorView && isMarkActive(editorView.state.schema.marks.link) && "bg-primary text-primary-foreground"
-            )}
-          >
-            <Link2 className="size-4" />
-          </ToggleGroupItem>
-        </ToggleGroup>
+            <ToggleGroupItem
+              value="bold"
+              aria-label="Toggle bold"
+              onClick={toggleBold}
+              className={cn(
+                'h-9 w-9 p-0 rounded-lg transition-all duration-200',
+                editorView &&
+                  isMarkActive(editorView.state.schema.marks.strong) &&
+                  'bg-primary text-primary-foreground',
+              )}
+            >
+              <Bold className="size-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="italic"
+              aria-label="Toggle italic"
+              onClick={toggleItalic}
+              className={cn(
+                'h-9 w-9 p-0 rounded-lg transition-all duration-200',
+                editorView &&
+                  isMarkActive(editorView.state.schema.marks.em) &&
+                  'bg-primary text-primary-foreground',
+              )}
+            >
+              <Italic className="size-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="underline"
+              aria-label="Toggle underline"
+              onClick={toggleUnderline}
+              className={cn(
+                'h-9 w-9 p-0 rounded-lg transition-all duration-200',
+                editorView &&
+                  isMarkActive(editorView.state.schema.marks.code) &&
+                  'bg-primary text-primary-foreground',
+              )}
+            >
+              <Underline className="size-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="link"
+              aria-label="Add link"
+              onClick={toggleLink}
+              className={cn(
+                'h-9 w-9 p-0 rounded-lg transition-all duration-200',
+                editorView &&
+                  isMarkActive(editorView.state.schema.marks.link) &&
+                  'bg-primary text-primary-foreground',
+              )}
+            >
+              <Link2 className="size-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
 
-        <Separator orientation="vertical" className="h-7 mx-1.5 opacity-20" />
+          <Separator orientation="vertical" className="h-7 mx-1.5 opacity-20" />
 
-        {/* Headings */}
-        <ToggleGroup type="single" className="gap-0.5">
-          <ToggleGroupItem
-            value="h1"
-            aria-label="Heading 1"
-            onClick={() => setHeading(1)}
-            className={cn(
-              "h-9 px-3 rounded-lg font-bold text-base transition-all duration-200",
-              isHeadingActive(1) && "bg-primary text-primary-foreground"
-            )}
-          >
-            H1
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="h2"
-            aria-label="Heading 2"
-            onClick={() => setHeading(2)}
-            className={cn(
-              "h-9 px-3 rounded-lg font-bold text-sm transition-all duration-200",
-              isHeadingActive(2) && "bg-primary text-primary-foreground"
-            )}
-          >
-            H2
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="h3"
-            aria-label="Heading 3"
-            onClick={() => setHeading(3)}
-            className={cn(
-              "h-9 px-3 rounded-lg font-bold text-xs transition-all duration-200",
-              isHeadingActive(3) && "bg-primary text-primary-foreground"
-            )}
-          >
-            H3
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="h4"
-            aria-label="Heading 4"
-            onClick={() => setHeading(4)}
-            className={cn(
-              "h-9 px-2.5 rounded-lg font-bold text-xs transition-all duration-200",
-              isHeadingActive(4) && "bg-primary text-primary-foreground"
-            )}
-          >
-            H4
-          </ToggleGroupItem>
-        </ToggleGroup>
+          {/* Headings */}
+          <ToggleGroup type="single" className="gap-0.5">
+            <ToggleGroupItem
+              value="h1"
+              aria-label="Heading 1"
+              onClick={() => setHeading(1)}
+              className={cn(
+                'h-9 px-3 rounded-lg font-bold text-base transition-all duration-200',
+                isHeadingActive(1) && 'bg-primary text-primary-foreground',
+              )}
+            >
+              H1
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="h2"
+              aria-label="Heading 2"
+              onClick={() => setHeading(2)}
+              className={cn(
+                'h-9 px-3 rounded-lg font-bold text-sm transition-all duration-200',
+                isHeadingActive(2) && 'bg-primary text-primary-foreground',
+              )}
+            >
+              H2
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="h3"
+              aria-label="Heading 3"
+              onClick={() => setHeading(3)}
+              className={cn(
+                'h-9 px-3 rounded-lg font-bold text-xs transition-all duration-200',
+                isHeadingActive(3) && 'bg-primary text-primary-foreground',
+              )}
+            >
+              H3
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="h4"
+              aria-label="Heading 4"
+              onClick={() => setHeading(4)}
+              className={cn(
+                'h-9 px-2.5 rounded-lg font-bold text-xs transition-all duration-200',
+                isHeadingActive(4) && 'bg-primary text-primary-foreground',
+              )}
+            >
+              H4
+            </ToggleGroupItem>
+          </ToggleGroup>
 
-        <Separator orientation="vertical" className="h-7 mx-1.5 opacity-20" />
+          <Separator orientation="vertical" className="h-7 mx-1.5 opacity-20" />
 
-        {/* Lists */}
-        <ToggleGroup type="single" className="gap-0.5">
-          <ToggleGroupItem
-            value="bullet"
-            aria-label="Bullet list"
-            onClick={toggleBulletList}
-            className={cn(
-              "h-9 w-9 p-0 rounded-lg transition-all duration-200 hover:bg-muted",
-              isListActive('bullet_list') && "bg-primary text-primary-foreground"
-            )}
-          >
-            <List className="size-4" />
-          </ToggleGroupItem>
-          <ToggleGroupItem
-            value="ordered"
-            aria-label="Ordered list"
-            onClick={toggleOrderedList}
-            className={cn(
-              "h-9 w-9 p-0 rounded-lg transition-all duration-200 hover:bg-muted",
-              isListActive('ordered_list') && "bg-primary text-primary-foreground"
-            )}
-          >
-            <ListOrdered className="size-4" />
-          </ToggleGroupItem>
-        </ToggleGroup>
+          {/* Lists */}
+          <ToggleGroup type="single" className="gap-0.5">
+            <ToggleGroupItem
+              value="bullet"
+              aria-label="Bullet list"
+              onClick={toggleBulletList}
+              className={cn(
+                'h-9 w-9 p-0 rounded-lg transition-all duration-200 hover:bg-muted',
+                isListActive('bullet_list') &&
+                  'bg-primary text-primary-foreground',
+              )}
+            >
+              <List className="size-4" />
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="ordered"
+              aria-label="Ordered list"
+              onClick={toggleOrderedList}
+              className={cn(
+                'h-9 w-9 p-0 rounded-lg transition-all duration-200 hover:bg-muted',
+                isListActive('ordered_list') &&
+                  'bg-primary text-primary-foreground',
+              )}
+            >
+              <ListOrdered className="size-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
         </>
       )}
     </div>

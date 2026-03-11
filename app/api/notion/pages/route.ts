@@ -25,7 +25,7 @@ function cleanCache(): void {
     // Remove oldest entries
     const entries = Array.from(cache.entries());
     entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
-    
+
     for (let i = 0; i < entries.length - MAX_CACHE_SIZE + 10; i++) {
       cache.delete(entries[i][0]);
     }
@@ -34,9 +34,10 @@ function cleanCache(): void {
 
 function filterCachedPages(pages: NotionPage[], query: string): NotionPage[] {
   const lowercaseQuery = query.toLowerCase();
-  return pages.filter(page => 
-    page.title.toLowerCase().includes(lowercaseQuery) ||
-    page.path.toLowerCase().includes(lowercaseQuery)
+  return pages.filter(
+    (page) =>
+      page.title.toLowerCase().includes(lowercaseQuery) ||
+      page.path.toLowerCase().includes(lowercaseQuery),
   );
 }
 
@@ -45,14 +46,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q') || searchParams.get('query') || '';
     const allPagesKey = 'all_pages';
-    const searchCacheKey = query.trim() ? `search:${query.trim()}` : allPagesKey;
+    const searchCacheKey = query.trim()
+      ? `search:${query.trim()}`
+      : allPagesKey;
 
     // Always try to get ALL pages first (cached)
     const allPagesCached = cache.get(allPagesKey);
-    
+
     if (query.trim()) {
       // SEARCH MODE: Filter through all pages
-      
+
       // Check if we have a cached search result
       const searchCached = cache.get(searchCacheKey);
       if (searchCached && isCacheValid(searchCached)) {
@@ -62,10 +65,10 @@ export async function GET(request: NextRequest) {
           source: 'search_cache',
           timestamp: searchCached.timestamp,
           total: searchCached.pages.length,
-          totalInDatabase: allPagesCached?.pages.length || 0
+          totalInDatabase: allPagesCached?.pages.length || 0,
         });
       }
-      
+
       // Use cached all pages if available, otherwise fetch
       let allPages: NotionPage[];
       if (allPagesCached && isCacheValid(allPagesCached)) {
@@ -75,32 +78,31 @@ export async function GET(request: NextRequest) {
         // Cache all pages
         cache.set(allPagesKey, {
           pages: allPages,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       }
-      
+
       // Filter pages by search query
       const filteredPages = filterCachedPages(allPages, query);
-      
+
       // Cache the search results
       cache.set(searchCacheKey, {
         pages: filteredPages,
         timestamp: Date.now(),
-        query
+        query,
       });
-      
+
       return NextResponse.json({
         success: true,
         pages: filteredPages,
         source: 'search_filtered',
         timestamp: Date.now(),
         total: filteredPages.length,
-        totalInDatabase: allPages.length
+        totalInDatabase: allPages.length,
       });
-      
     } else {
       // NO SEARCH: Return all pages
-      
+
       // Check cache for all pages
       if (allPagesCached && isCacheValid(allPagesCached)) {
         return NextResponse.json({
@@ -109,48 +111,56 @@ export async function GET(request: NextRequest) {
           source: 'cache',
           timestamp: allPagesCached.timestamp,
           total: allPagesCached.pages.length,
-          totalInDatabase: allPagesCached.pages.length
+          totalInDatabase: allPagesCached.pages.length,
         });
       }
-      
+
       // Fetch all pages from Notion
       const pages = await notionService.getAllPages();
-      
+
       // Cache all pages
       cache.set(allPagesKey, {
         pages,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
-      
+
       // Clean cache if needed
       cleanCache();
-      
+
       return NextResponse.json({
         success: true,
         pages,
         source: 'api_all',
         timestamp: Date.now(),
         total: pages.length,
-        totalInDatabase: pages.length
+        totalInDatabase: pages.length,
       });
     }
-
   } catch (error) {
     console.error('Notion API error:', error);
-    
+
     // Determine error type for better user experience
     let errorMessage = 'Failed to fetch Notion pages';
     let errorCode = 'UNKNOWN_ERROR';
 
     if (error instanceof Error) {
-      if (error.message.includes('Unauthorized') || error.message.includes('unauthorized')) {
-        errorMessage = 'Invalid Notion token. Please check your integration setup.';
+      if (
+        error.message.includes('Unauthorized') ||
+        error.message.includes('unauthorized')
+      ) {
+        errorMessage =
+          'Invalid Notion token. Please check your integration setup.';
         errorCode = 'UNAUTHORIZED';
       } else if (error.message.includes('rate_limited')) {
-        errorMessage = 'Rate limited by Notion API. Please try again in a moment.';
+        errorMessage =
+          'Rate limited by Notion API. Please try again in a moment.';
         errorCode = 'RATE_LIMITED';
-      } else if (error.message.includes('network') || error.message.includes('fetch')) {
-        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (
+        error.message.includes('network') ||
+        error.message.includes('fetch')
+      ) {
+        errorMessage =
+          'Network error. Please check your connection and try again.';
         errorCode = 'NETWORK_ERROR';
       } else {
         errorMessage = error.message;
@@ -162,9 +172,9 @@ export async function GET(request: NextRequest) {
         success: false,
         error: errorMessage,
         code: errorCode,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -173,21 +183,22 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const isConnected = await notionService.testConnection();
-    
+
     return NextResponse.json({
       success: true,
       connected: isConnected,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     });
   } catch (error) {
     return NextResponse.json(
       {
         success: false,
         connected: false,
-        error: error instanceof Error ? error.message : 'Connection test failed',
-        timestamp: Date.now()
+        error:
+          error instanceof Error ? error.message : 'Connection test failed',
+        timestamp: Date.now(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

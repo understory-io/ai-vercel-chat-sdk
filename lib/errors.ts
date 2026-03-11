@@ -105,7 +105,7 @@ export function getMessageByErrorCode(errorCode: ErrorCode): string {
     case 'offline:chat':
       return "We're having trouble sending your message. Please check your internet connection and try again.";
     case 'timeout:chat':
-      return "The request timed out. This might happen with very long responses. Please try again or break your request into smaller parts.";
+      return 'The request timed out. This might happen with very long responses. Please try again or break your request into smaller parts.';
 
     case 'not_found:document':
       return 'The requested document was not found. Please check the document ID and try again.';

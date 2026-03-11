@@ -4,7 +4,9 @@ import { mcpAuthCode, user } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://product-documentation-generator.vercel.app';
+const BASE_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  'https://product-documentation-generator.vercel.app';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -12,7 +14,10 @@ export async function GET(request: Request) {
   const pendingId = url.searchParams.get('state');
 
   if (!googleCode || !pendingId) {
-    return NextResponse.json({ error: 'Missing code or state' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Missing code or state' },
+      { status: 400 },
+    );
   }
 
   // Verify cookie matches
@@ -32,11 +37,17 @@ export async function GET(request: Request) {
     .where(eq(mcpAuthCode.id, pendingId));
 
   if (!pendingAuth || pendingAuth.usedAt) {
-    return NextResponse.json({ error: 'Invalid or expired auth request' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Invalid or expired auth request' },
+      { status: 400 },
+    );
   }
 
   if (new Date() > pendingAuth.expiresAt) {
-    return NextResponse.json({ error: 'Auth request expired' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Auth request expired' },
+      { status: 400 },
+    );
   }
 
   // Exchange Google code for tokens
@@ -54,25 +65,37 @@ export async function GET(request: Request) {
   });
 
   if (!tokenRes.ok) {
-    return NextResponse.json({ error: 'Google token exchange failed' }, { status: 502 });
+    return NextResponse.json(
+      { error: 'Google token exchange failed' },
+      { status: 502 },
+    );
   }
 
   const tokenData = await tokenRes.json();
 
   // Get user info from Google
-  const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-    headers: { Authorization: `Bearer ${tokenData.access_token}` },
-  });
+  const userInfoRes = await fetch(
+    'https://www.googleapis.com/oauth2/v2/userinfo',
+    {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    },
+  );
 
   if (!userInfoRes.ok) {
-    return NextResponse.json({ error: 'Failed to get user info' }, { status: 502 });
+    return NextResponse.json(
+      { error: 'Failed to get user info' },
+      { status: 502 },
+    );
   }
 
   const userInfo = await userInfoRes.json();
 
   // Verify @understory.io domain
   if (!userInfo.email?.endsWith('@understory.io')) {
-    return NextResponse.json({ error: 'Only @understory.io accounts are allowed' }, { status: 403 });
+    return NextResponse.json(
+      { error: 'Only @understory.io accounts are allowed' },
+      { status: 403 },
+    );
   }
 
   // Look up or create user

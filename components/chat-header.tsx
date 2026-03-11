@@ -69,7 +69,6 @@ function PureChatHeader({
           className="order-1 md:order-3"
         />
       )}
-
     </header>
   );
 }

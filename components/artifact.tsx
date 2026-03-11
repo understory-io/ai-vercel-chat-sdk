@@ -406,7 +406,9 @@ function PureArtifact({
                     ? artifact.content
                     : getDocumentContentById(currentVersionIndex)
                 }
-                status={artifact.status === 'updated' ? 'idle' : artifact.status}
+                status={
+                  artifact.status === 'updated' ? 'idle' : artifact.status
+                }
                 currentVersionIndex={currentVersionIndex}
                 suggestions={[]}
                 onSaveContent={saveContent}

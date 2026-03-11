@@ -252,9 +252,11 @@ const DocumentContent = ({ document }: { document: Document }) => {
     content: document.content ?? '',
     isCurrentVersion: true,
     currentVersionIndex: 0,
-    status: artifact.isVisible 
-      ? (artifact.status === 'updated' ? 'idle' : artifact.status)
-      : 'idle' as 'streaming' | 'idle',
+    status: artifact.isVisible
+      ? artifact.status === 'updated'
+        ? 'idle'
+        : artifact.status
+      : ('idle' as 'streaming' | 'idle'),
     saveContent: () => {},
     suggestions: [],
   };

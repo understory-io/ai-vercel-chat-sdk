@@ -1,6 +1,10 @@
 'use client';
 
-import { type MarkdownParser, defaultMarkdownSerializer, defaultMarkdownParser } from 'prosemirror-markdown';
+import {
+  type MarkdownParser,
+  defaultMarkdownSerializer,
+  defaultMarkdownParser,
+} from 'prosemirror-markdown';
 import { DOMParser, type Node } from 'prosemirror-model';
 import { Decoration, DecorationSet, type EditorView } from 'prosemirror-view';
 import { renderToString } from 'react-dom/server';
@@ -27,7 +31,10 @@ export const buildDocumentFromContent = (content: string) => {
     return parser.parse(content);
   } catch (error) {
     // Fallback to the original method if markdown parsing fails
-    console.warn('Direct markdown parsing failed, falling back to DOM parsing:', error);
+    console.warn(
+      'Direct markdown parsing failed, falling back to DOM parsing:',
+      error,
+    );
     const { documentSchema } = require('./config');
     const parser = DOMParser.fromSchema(documentSchema);
     const stringFromMarkdown = renderToString(<Markdown>{content}</Markdown>);

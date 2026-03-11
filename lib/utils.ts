@@ -33,7 +33,7 @@ export async function fetchWithErrorHandlers(
   try {
     // Add timeout to detect stuck requests (6 minutes = maxDuration + buffer)
     const timeoutMs = 6 * 60 * 1000; // 6 minutes
-    
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
       controller.abort();

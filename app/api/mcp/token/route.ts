@@ -4,7 +4,9 @@ import { mcpAuthCode, mcpRefreshToken } from '@/lib/db/schema';
 import { and, eq, isNull, gt } from 'drizzle-orm';
 import { signAccessToken } from '@/lib/mcp/jwt';
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://product-documentation-generator.vercel.app';
+const BASE_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  'https://product-documentation-generator.vercel.app';
 
 async function sha256(input: string): Promise<string> {
   const encoded = new TextEncoder().encode(input);
@@ -54,7 +56,10 @@ async function handleAuthorizationCode(body: URLSearchParams) {
 
   if (!code || !codeVerifier) {
     return NextResponse.json(
-      { error: 'invalid_request', error_description: 'Missing code or code_verifier' },
+      {
+        error: 'invalid_request',
+        error_description: 'Missing code or code_verifier',
+      },
       { status: 400 },
     );
   }
@@ -96,7 +101,11 @@ async function handleAuthorizationCode(body: URLSearchParams) {
   const scope = authCodeRow.scope || 'drafts';
 
   // Issue access token
-  const accessToken = await signAccessToken(authCodeRow.userId, audience, scope);
+  const accessToken = await signAccessToken(
+    authCodeRow.userId,
+    audience,
+    scope,
+  );
 
   // Issue refresh token
   const refreshTokenValue = crypto.randomUUID();

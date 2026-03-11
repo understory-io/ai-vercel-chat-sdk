@@ -3,7 +3,14 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { X, Folder, FileText, ChevronRight, ArrowLeft, Search } from 'lucide-react';
+import {
+  X,
+  Folder,
+  FileText,
+  ChevronRight,
+  ArrowLeft,
+  Search,
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { htmlToText } from '@/lib/html-to-text';
@@ -48,11 +55,19 @@ export function IntercomExplorerModal({
   onSelect,
 }: IntercomExplorerModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedArticles, setSelectedArticles] = useState<IntercomArticle[]>([]);
-  const [rootCollections, setRootCollections] = useState<IntercomCollection[]>([]);
+  const [selectedArticles, setSelectedArticles] = useState<IntercomArticle[]>(
+    [],
+  );
+  const [rootCollections, setRootCollections] = useState<IntercomCollection[]>(
+    [],
+  );
   const [currentArticles, setCurrentArticles] = useState<IntercomArticle[]>([]);
-  const [allArticlesCache, setAllArticlesCache] = useState<IntercomArticle[]>([]);
-  const [collectionToArticlesMap, setCollectionToArticlesMap] = useState<Map<string, IntercomArticle[]>>(new Map());
+  const [allArticlesCache, setAllArticlesCache] = useState<IntercomArticle[]>(
+    [],
+  );
+  const [collectionToArticlesMap, setCollectionToArticlesMap] = useState<
+    Map<string, IntercomArticle[]>
+  >(new Map());
   const [loading, setLoading] = useState(false);
   const [viewState, setViewState] = useState<ViewState>({
     type: 'root',
@@ -96,12 +111,16 @@ export function IntercomExplorerModal({
 
   const fetchAllArticlesMetadata = async () => {
     try {
-      const response = await fetch('/api/intercom/articles/helpcenter?metadata_only=true');
+      const response = await fetch(
+        '/api/intercom/articles/helpcenter?metadata_only=true',
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('Articles metadata API error:', errorData);
-        throw new Error(`Failed to fetch articles metadata: ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch articles metadata: ${response.statusText}`,
+        );
       }
 
       const data = await response.json();
@@ -114,8 +133,12 @@ export function IntercomExplorerModal({
 
       (data.articles || []).forEach((article: IntercomArticle) => {
         // Handle parent_ids array (articles in multiple collections)
-        if (article.parent_ids && Array.isArray(article.parent_ids) && article.parent_ids.length > 0) {
-          article.parent_ids.forEach(parentId => {
+        if (
+          article.parent_ids &&
+          Array.isArray(article.parent_ids) &&
+          article.parent_ids.length > 0
+        ) {
+          article.parent_ids.forEach((parentId) => {
             const parentIdString = String(parentId);
             const existing = map.get(parentIdString) || [];
             map.set(parentIdString, [...existing, article]);
@@ -136,12 +159,17 @@ export function IntercomExplorerModal({
     }
   };
 
-  const getArticlesForCollection = (collectionId: string): IntercomArticle[] => {
+  const getArticlesForCollection = (
+    collectionId: string,
+  ): IntercomArticle[] => {
     return collectionToArticlesMap.get(collectionId) || [];
   };
 
   const navigateToCollection = (collection: IntercomCollection) => {
-    const newPath = [...viewState.path, { id: collection.id, name: collection.name }];
+    const newPath = [
+      ...viewState.path,
+      { id: collection.id, name: collection.name },
+    ];
     setViewState({
       type: 'collection',
       collection,
@@ -164,7 +192,10 @@ export function IntercomExplorerModal({
       const parentId = newPath[newPath.length - 1]?.id;
 
       // Find parent collection
-      const findCollection = (collections: IntercomCollection[], id: string): IntercomCollection | null => {
+      const findCollection = (
+        collections: IntercomCollection[],
+        id: string,
+      ): IntercomCollection | null => {
         for (const col of collections) {
           if (col.id === id) return col;
           const found = findCollection(col.children, id);
@@ -173,7 +204,9 @@ export function IntercomExplorerModal({
         return null;
       };
 
-      const parentCollection = parentId ? findCollection(rootCollections, parentId) : null;
+      const parentCollection = parentId
+        ? findCollection(rootCollections, parentId)
+        : null;
 
       if (parentCollection) {
         setViewState({
@@ -192,10 +225,10 @@ export function IntercomExplorerModal({
   };
 
   const toggleArticleSelection = (article: IntercomArticle) => {
-    setSelectedArticles(prev => {
-      const isSelected = prev.some(a => a.id === article.id);
+    setSelectedArticles((prev) => {
+      const isSelected = prev.some((a) => a.id === article.id);
       if (isSelected) {
-        return prev.filter(a => a.id !== article.id);
+        return prev.filter((a) => a.id !== article.id);
       } else {
         return [...prev, article];
       }
@@ -214,18 +247,21 @@ export function IntercomExplorerModal({
       const articlesWithContent = await Promise.all(
         selectedArticles.map(async (article) => {
           const response = await fetch(`/api/intercom/articles/${article.id}`);
-          if (!response.ok) throw new Error(`Failed to fetch article ${article.id}`);
+          if (!response.ok)
+            throw new Error(`Failed to fetch article ${article.id}`);
           const fullArticle = await response.json();
 
           // Return article with clean text content
-          const cleanBody = fullArticle.body ? htmlToText(fullArticle.body) : '';
+          const cleanBody = fullArticle.body
+            ? htmlToText(fullArticle.body)
+            : '';
 
           return {
             ...article,
             body: cleanBody,
             description: fullArticle.description || article.description,
           };
-        })
+        }),
       );
 
       onSelect(articlesWithContent);
@@ -238,16 +274,17 @@ export function IntercomExplorerModal({
     }
   };
 
-  const currentCollections = viewState.type === 'root'
-    ? rootCollections
-    : (viewState.collection?.children || []);
+  const currentCollections =
+    viewState.type === 'root'
+      ? rootCollections
+      : viewState.collection?.children || [];
 
-  const filteredCollections = currentCollections.filter(col =>
-    col.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCollections = currentCollections.filter((col) =>
+    col.name.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  const filteredArticles = currentArticles.filter(article =>
-    article.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredArticles = currentArticles.filter((article) =>
+    article.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   if (!open) return null;
@@ -290,7 +327,7 @@ export function IntercomExplorerModal({
                 <h2 className="text-lg font-semibold">
                   {viewState.path.length === 0
                     ? 'Help Center Collections'
-                    : viewState.path.map(p => p.name).join(' > ')}
+                    : viewState.path.map((p) => p.name).join(' > ')}
                 </h2>
               </div>
               <Button
@@ -356,7 +393,7 @@ export function IntercomExplorerModal({
                         type="button"
                         onClick={() => toggleArticleSelection(article)}
                         className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors text-left ${
-                          selectedArticles.some(a => a.id === article.id)
+                          selectedArticles.some((a) => a.id === article.id)
                             ? 'bg-primary/10 hover:bg-primary/15'
                             : 'hover:bg-muted'
                         }`}
@@ -366,11 +403,13 @@ export function IntercomExplorerModal({
                           <div>
                             <div className="flex items-center gap-2">
                               <div className="font-medium">{article.title}</div>
-                              <span className={`text-xs px-1.5 py-0.5 rounded ${
-                                article.state === 'published'
-                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                                  : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400'
-                              }`}>
+                              <span
+                                className={`text-xs px-1.5 py-0.5 rounded ${
+                                  article.state === 'published'
+                                    ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                                    : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400'
+                                }`}
+                              >
                                 {article.state}
                               </span>
                             </div>
@@ -381,7 +420,7 @@ export function IntercomExplorerModal({
                             )}
                           </div>
                         </div>
-                        {selectedArticles.some(a => a.id === article.id) && (
+                        {selectedArticles.some((a) => a.id === article.id) && (
                           <div className="size-5 rounded-full bg-primary flex items-center justify-center">
                             <svg
                               className="size-3 text-primary-foreground"
@@ -407,13 +446,10 @@ export function IntercomExplorerModal({
               <div className="p-4 border-t bg-muted/50">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">
-                    {selectedArticles.length} article{selectedArticles.length !== 1 ? 's' : ''} selected
+                    {selectedArticles.length} article
+                    {selectedArticles.length !== 1 ? 's' : ''} selected
                   </span>
-                  <Button
-                    onClick={handleConfirm}
-                    disabled={loading}
-                    size="sm"
-                  >
+                  <Button onClick={handleConfirm} disabled={loading} size="sm">
                     Add to Context
                   </Button>
                 </div>

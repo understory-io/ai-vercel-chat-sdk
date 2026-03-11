@@ -6,7 +6,9 @@ function getSigningKey(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
-const ISSUER = process.env.NEXT_PUBLIC_APP_URL || 'https://product-documentation-generator.vercel.app';
+const ISSUER =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  'https://product-documentation-generator.vercel.app';
 
 export async function signAccessToken(
   userId: string,

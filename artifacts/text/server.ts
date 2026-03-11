@@ -7,7 +7,7 @@ export const textDocumentHandler = createDocumentHandler<'text'>({
     if (!content) {
       throw new Error('Content is required for text document creation');
     }
-    
+
     return content;
   },
   onUpdateDocument: async ({ document, description, dataStream, content }) => {
@@ -15,7 +15,7 @@ export const textDocumentHandler = createDocumentHandler<'text'>({
     if (!content) {
       throw new Error('Content is required for text document updates');
     }
-    
+
     return content;
   },
 });

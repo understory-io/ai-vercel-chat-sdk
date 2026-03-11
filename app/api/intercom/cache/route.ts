@@ -12,7 +12,7 @@ export async function DELETE(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: 'Articles cache cleared successfully'
+        message: 'Articles cache cleared successfully',
       });
     }
 
@@ -23,20 +23,19 @@ export async function DELETE(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: 'All Intercom caches cleared successfully'
+        message: 'All Intercom caches cleared successfully',
       });
     }
 
     return NextResponse.json(
       { error: 'Invalid action. Use ?action=articles or ?action=all' },
-      { status: 400 }
+      { status: 400 },
     );
-
   } catch (error) {
     console.error('Error clearing cache:', error);
     return NextResponse.json(
       { error: 'Failed to clear cache' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -46,8 +45,8 @@ export async function GET() {
     message: 'Intercom Cache Management',
     endpoints: {
       'DELETE /api/intercom/cache?action=articles': 'Clear articles cache',
-      'DELETE /api/intercom/cache?action=all': 'Clear all Intercom caches'
+      'DELETE /api/intercom/cache?action=all': 'Clear all Intercom caches',
     },
-    cache_ttl: '5 minutes (300 seconds)'
+    cache_ttl: '5 minutes (300 seconds)',
   });
 }

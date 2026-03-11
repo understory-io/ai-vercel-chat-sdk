@@ -99,17 +99,19 @@ export function NotionSelectorModal({
 
       // Show success toast for initial load only
       if (data.source === 'api_all' && (!query || query.trim() === '')) {
-        toast.success(`Loaded ${data.totalInDatabase || 0} pages from database`);
+        toast.success(
+          `Loaded ${data.totalInDatabase || 0} pages from database`,
+        );
       }
-
     } catch (err) {
       console.error('Error fetching Notion pages:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch pages';
-      
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch pages';
+
       setError({
         message: errorMessage,
         code: 'FETCH_ERROR',
-        canRetry: true
+        canRetry: true,
       });
       setLoadingState('error');
       setPages([]);
@@ -119,56 +121,57 @@ export function NotionSelectorModal({
     }
   }, []);
 
-// Load all pages function  
-const loadAllPages = useCallback(async () => {
-  setLoadingState('loading');
-  setError(null);
-  
-  try {
-    const response = await fetch('/api/notion/pages');
-    const data: NotionApiResponse = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.error || 'Failed to fetch pages');
-    }
-
-    setPages(data.pages || []);
-    setTotalPages(data.total || 0);
-    setTotalInDatabase(data.totalInDatabase || data.total || 0);
-    setLoadingState('success');
-    
-    toast.success(`Loaded ${data.totalInDatabase || 0} pages from database`);
-  } catch (err) {
-    console.error('Error loading pages:', err);
-    const errorMessage = err instanceof Error ? err.message : 'Failed to fetch pages';
-    
-    setError({
-      message: errorMessage,
-      code: 'FETCH_ERROR',
-      canRetry: true
-    });
-    setLoadingState('error');
-    setPages([]);
-    
-    toast.error(errorMessage);
-  }
-}, []);
-
-// Initial load when modal opens
-useEffect(() => {
-  if (open) {
-    // Reset state when opening
-    setSelectedPages([]);
-    setSearchQuery('');
-    setDebouncedQuery('');
-    setNavigationIndex(-1);
+  // Load all pages function
+  const loadAllPages = useCallback(async () => {
+    setLoadingState('loading');
     setError(null);
-    setTotalPages(0);
-    
-    // Fetch ALL pages immediately on open
-    loadAllPages();
-  }
-}, [open, loadAllPages]);
+
+    try {
+      const response = await fetch('/api/notion/pages');
+      const data: NotionApiResponse = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to fetch pages');
+      }
+
+      setPages(data.pages || []);
+      setTotalPages(data.total || 0);
+      setTotalInDatabase(data.totalInDatabase || data.total || 0);
+      setLoadingState('success');
+
+      toast.success(`Loaded ${data.totalInDatabase || 0} pages from database`);
+    } catch (err) {
+      console.error('Error loading pages:', err);
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to fetch pages';
+
+      setError({
+        message: errorMessage,
+        code: 'FETCH_ERROR',
+        canRetry: true,
+      });
+      setLoadingState('error');
+      setPages([]);
+
+      toast.error(errorMessage);
+    }
+  }, []);
+
+  // Initial load when modal opens
+  useEffect(() => {
+    if (open) {
+      // Reset state when opening
+      setSelectedPages([]);
+      setSearchQuery('');
+      setDebouncedQuery('');
+      setNavigationIndex(-1);
+      setError(null);
+      setTotalPages(0);
+
+      // Fetch ALL pages immediately on open
+      loadAllPages();
+    }
+  }, [open, loadAllPages]);
 
   // Fetch when debounced query changes
   useEffect(() => {
@@ -210,10 +213,10 @@ useEffect(() => {
 
   const handleSelect = async () => {
     if (selectedPages.length === 0) return;
-    
+
     setIsLoadingContent(true);
     setContentProgress(0);
-    
+
     try {
       // Fetch content for all selected pages
       const response = await fetch('/api/notion/content', {
@@ -221,58 +224,68 @@ useEffect(() => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          pageIds: selectedPages.map(p => p.id) 
-        })
+        body: JSON.stringify({
+          pageIds: selectedPages.map((p) => p.id),
+        }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch page content');
       }
-      
+
       const data = await response.json();
-      
+
       if (!data.success) {
         throw new Error(data.error || 'Failed to fetch content');
       }
-      
+
       // Merge content with page metadata
-      const pagesWithContent = selectedPages.map(page => {
-        const contentResult = data.results.find((r: ContentFetchResult) => r.id === page.id);
+      const pagesWithContent = selectedPages.map((page) => {
+        const contentResult = data.results.find(
+          (r: ContentFetchResult) => r.id === page.id,
+        );
         return {
           ...page,
           content: contentResult?.content || '',
-          contentStatus: contentResult?.status === 'success' ? 'loaded' as const : 'error' as const,
-          contentError: contentResult?.error
+          contentStatus:
+            contentResult?.status === 'success'
+              ? ('loaded' as const)
+              : ('error' as const),
+          contentError: contentResult?.error,
         };
       });
-      
-      const successfulFetches = data.results.filter((r: ContentFetchResult) => r.status === 'success').length;
-      
+
+      const successfulFetches = data.results.filter(
+        (r: ContentFetchResult) => r.status === 'success',
+      ).length;
+
       if (successfulFetches > 0) {
-        toast.success(`Loaded content for ${successfulFetches} of ${selectedPages.length} pages`);
+        toast.success(
+          `Loaded content for ${successfulFetches} of ${selectedPages.length} pages`,
+        );
       }
-      
+
       if (successfulFetches < selectedPages.length) {
         const failedCount = selectedPages.length - successfulFetches;
         toast.error(`Failed to load content for ${failedCount} pages`);
       }
-      
+
       // Pass pages with content to parent
       onSelect(pagesWithContent);
       onOpenChange(false);
-      
     } catch (error) {
       console.error('Error fetching page content:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to fetch content');
-      
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to fetch content',
+      );
+
       // Still allow selection without content (fallback)
-      const pagesWithoutContent = selectedPages.map(page => ({
+      const pagesWithoutContent = selectedPages.map((page) => ({
         ...page,
         contentStatus: 'error' as const,
-        contentError: 'Failed to fetch content'
+        contentError: 'Failed to fetch content',
       }));
-      
+
       onSelect(pagesWithoutContent);
       onOpenChange(false);
     } finally {
@@ -304,7 +317,9 @@ useEffect(() => {
           const newIndex = prev < filteredPages.length - 1 ? prev + 1 : prev;
           // Scroll into view
           setTimeout(() => {
-            const element = document.querySelector(`[data-page-index="${newIndex}"]`);
+            const element = document.querySelector(
+              `[data-page-index="${newIndex}"]`,
+            );
             element?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
           }, 0);
           return newIndex;
@@ -316,7 +331,9 @@ useEffect(() => {
           const newIndex = prev > 0 ? prev - 1 : 0;
           // Scroll into view
           setTimeout(() => {
-            const element = document.querySelector(`[data-page-index="${newIndex}"]`);
+            const element = document.querySelector(
+              `[data-page-index="${newIndex}"]`,
+            );
             element?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
           }, 0);
           return newIndex;
@@ -386,11 +403,9 @@ useEffect(() => {
               {totalInDatabase > 0 && (
                 <div className="mt-2">
                   <div className="text-xs text-muted-foreground">
-                    {searchQuery ? (
-                      `Found ${totalPages} of ${totalInDatabase} pages`
-                    ) : (
-                      `${totalInDatabase} pages in database`
-                    )}
+                    {searchQuery
+                      ? `Found ${totalPages} of ${totalInDatabase} pages`
+                      : `${totalInDatabase} pages in database`}
                   </div>
                 </div>
               )}
@@ -425,14 +440,18 @@ useEffect(() => {
               <div className="flex items-center justify-center py-12">
                 <div className="flex items-center gap-2">
                   <RefreshCw className="size-4 animate-spin" />
-                  <div className="text-sm text-muted-foreground">Loading pages...</div>
+                  <div className="text-sm text-muted-foreground">
+                    Loading pages...
+                  </div>
                 </div>
               </div>
             ) : error ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center max-w-md">
                   <AlertCircle className="size-8 text-red-500 mx-auto mb-3" />
-                  <div className="text-sm font-medium text-foreground mb-1">Failed to load pages</div>
+                  <div className="text-sm font-medium text-foreground mb-1">
+                    Failed to load pages
+                  </div>
                   <div className="text-xs text-muted-foreground mb-4">
                     {error.message}
                   </div>
@@ -452,7 +471,9 @@ useEffect(() => {
             ) : filteredPages.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <div className="text-center">
-                  <div className="text-sm text-muted-foreground">No pages found</div>
+                  <div className="text-sm text-muted-foreground">
+                    No pages found
+                  </div>
                   {searchQuery && (
                     <div className="text-xs text-muted-foreground/60 mt-1">
                       Try adjusting your search terms
@@ -463,7 +484,9 @@ useEffect(() => {
             ) : (
               <div className="p-2">
                 {filteredPages.map((page, index) => {
-                  const isSelected = selectedPages.some((p) => p.id === page.id);
+                  const isSelected = selectedPages.some(
+                    (p) => p.id === page.id,
+                  );
                   const isNavigated = navigationIndex === index;
                   return (
                     <motion.div
@@ -472,11 +495,11 @@ useEffect(() => {
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       className={`group relative mx-2 mb-1 p-3 cursor-pointer rounded-md transition-all duration-150 border ${
-                        isSelected 
-                          ? 'bg-primary/5 border-primary/20' 
+                        isSelected
+                          ? 'bg-primary/5 border-primary/20'
                           : isNavigated
-                          ? 'border-border/50 bg-muted/50'
-                          : 'border-transparent hover:border-border/50 hover:bg-muted/50'
+                            ? 'border-border/50 bg-muted/50'
+                            : 'border-transparent hover:border-border/50 hover:bg-muted/50'
                       }`}
                       onClick={() => {
                         setNavigationIndex(index);
@@ -493,9 +516,7 @@ useEffect(() => {
                             {page.path}
                           </span>
                         </div>
-                        {isSelected && (
-                          <CheckCircleFillIcon size={16} />
-                        )}
+                        {isSelected && <CheckCircleFillIcon size={16} />}
                       </div>
                     </motion.div>
                   );

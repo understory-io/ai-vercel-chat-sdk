@@ -18,7 +18,8 @@ export default async function SettingsPage() {
         </div>
         <div className="p-4 border rounded-lg dark:border-zinc-700">
           <p className="text-sm dark:text-zinc-300">
-            Signed in as <span className="font-medium">{session.user.email}</span>
+            Signed in as{' '}
+            <span className="font-medium">{session.user.email}</span>
           </p>
         </div>
       </div>

@@ -224,10 +224,13 @@ export async function POST(request: Request) {
     await createStreamId({ streamId, chatId: id });
 
     // Configure different settings for different model types
-    const isGPTModel = (selectedChatModel.includes('chat-model') || selectedChatModel.includes('gpt41')) && !selectedChatModel.includes('claude');
+    const isGPTModel =
+      (selectedChatModel.includes('chat-model') ||
+        selectedChatModel.includes('gpt41')) &&
+      !selectedChatModel.includes('claude');
     const isClaude = selectedChatModel.includes('claude');
     const provider = isClaude ? 'anthropic' : isGPTModel ? 'openai' : 'unknown';
-    
+
     // Get the specific model name for logging
     let modelName = 'unknown';
     switch (selectedChatModel) {
@@ -363,17 +366,23 @@ export async function POST(request: Request) {
         let errorType = 'api_error';
         const errorMessage = errorObj.message.toLowerCase();
 
-        if (errorMessage.includes('rate limit') || 
-            errorMessage.includes('too many requests') ||
-            errorMessage.includes('quota exceeded') ||
-            errorMessage.includes('usage limit')) {
+        if (
+          errorMessage.includes('rate limit') ||
+          errorMessage.includes('too many requests') ||
+          errorMessage.includes('quota exceeded') ||
+          errorMessage.includes('usage limit')
+        ) {
           errorType = 'api_rate_limit';
-        } else if (errorMessage.includes('authentication') || 
-                   errorMessage.includes('unauthorized') || 
-                   errorMessage.includes('invalid api key')) {
+        } else if (
+          errorMessage.includes('authentication') ||
+          errorMessage.includes('unauthorized') ||
+          errorMessage.includes('invalid api key')
+        ) {
           errorType = 'unauthorized';
-        } else if (errorMessage.includes('insufficient funds') ||
-                   errorMessage.includes('billing')) {
+        } else if (
+          errorMessage.includes('insufficient funds') ||
+          errorMessage.includes('billing')
+        ) {
           errorType = 'forbidden';
         }
 
@@ -395,12 +404,15 @@ export async function POST(request: Request) {
 
         // Return an error message that can be handled by the AI SDK
         // The AI SDK will call the frontend's onError handler with this message
-        const streamErrorMessage = errorMessage.includes('rate limit') || errorMessage.includes('quota exceeded')
-          ? 'The AI service is currently experiencing high demand. Please wait a few minutes before trying again.'
-          : errorMessage.includes('authentication') || errorMessage.includes('unauthorized')
-          ? 'Authentication error with the AI service. Please try again.'
-          : 'The AI service is temporarily unavailable. Please try again in a few minutes.';
-        
+        const streamErrorMessage =
+          errorMessage.includes('rate limit') ||
+          errorMessage.includes('quota exceeded')
+            ? 'The AI service is currently experiencing high demand. Please wait a few minutes before trying again.'
+            : errorMessage.includes('authentication') ||
+                errorMessage.includes('unauthorized')
+              ? 'Authentication error with the AI service. Please try again.'
+              : 'The AI service is temporarily unavailable. Please try again in a few minutes.';
+
         return streamErrorMessage;
       },
     });

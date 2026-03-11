@@ -20,11 +20,11 @@ export class NotionExporter {
 
   constructor() {
     const token = process.env.NOTION_TOKEN;
-    
+
     if (!token) {
       throw new Error('NOTION_TOKEN environment variable is required');
     }
-    
+
     this.client = new Client({
       auth: token,
     });
@@ -40,18 +40,22 @@ export class NotionExporter {
     databaseId,
   }: NotionExportOptions): Promise<NotionExportResult> {
     try {
-      console.log('NotionExporter received:', { title, databaseId, parentPageId });
-      
+      console.log('NotionExporter received:', {
+        title,
+        databaseId,
+        parentPageId,
+      });
+
       // Convert markdown content to Notion blocks using martian
       const blocks = markdownToBlocks(content);
 
       // Prepare page properties
       const pageProps: any = {
-        parent: databaseId 
+        parent: databaseId
           ? { database_id: databaseId }
-          : parentPageId 
-          ? { page_id: parentPageId }
-          : { workspace: true },
+          : parentPageId
+            ? { page_id: parentPageId }
+            : { workspace: true },
         properties: {},
       };
 
@@ -59,7 +63,7 @@ export class NotionExporter {
       if (databaseId) {
         // Get current date in ISO format for Notion
         const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-        
+
         pageProps.properties = {
           Name: {
             title: [
@@ -95,7 +99,7 @@ export class NotionExporter {
         ...pageProps,
         children: initialChildren as any,
       });
-      
+
       // Append the rest of the content in batches of 100
       const remaining = blocks.slice(100);
       if (remaining.length > 0) {
@@ -107,7 +111,7 @@ export class NotionExporter {
           });
         }
       }
-      
+
       // Get the page URL
       const pageUrl = `https://notion.so/${response.id.replace(/-/g, '')}`;
 
@@ -154,6 +158,10 @@ export function getNotionExporter(): NotionExporter {
 
 // For backwards compatibility - will throw if accessed without env vars
 export const notionExporter = {
-  get exportToNotion() { return getNotionExporter().exportToNotion.bind(getNotionExporter()); },
-  get testExportConnection() { return getNotionExporter().testExportConnection.bind(getNotionExporter()); },
+  get exportToNotion() {
+    return getNotionExporter().exportToNotion.bind(getNotionExporter());
+  },
+  get testExportConnection() {
+    return getNotionExporter().testExportConnection.bind(getNotionExporter());
+  },
 };

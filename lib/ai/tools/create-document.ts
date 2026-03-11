@@ -20,7 +20,9 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
     inputSchema: z.object({
       title: z.string(),
       kind: z.enum(artifactKinds),
-      content: z.string().describe('The complete content to display in the artifact'),
+      content: z
+        .string()
+        .describe('The complete content to display in the artifact'),
     }),
     execute: async ({ title, kind, content }) => {
       const id = generateUUID();
