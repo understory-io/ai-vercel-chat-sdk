@@ -55,6 +55,13 @@ function isAllowedRedirectUri(uri: string): boolean {
     return false;
   }
 
+  // Allow localhost/127.0.0.1 redirect URIs on any port.
+  // This is standard for CLI-based OAuth clients (RFC 8252 Section 7.3)
+  // which spin up a temporary local HTTP server to receive the callback.
+  if (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') {
+    return true;
+  }
+
   const allowedOrigins = getAllowedOrigins();
   return allowedOrigins.some(
     (allowed) =>
