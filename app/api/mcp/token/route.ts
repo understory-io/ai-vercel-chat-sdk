@@ -64,17 +64,18 @@ async function handleAuthorizationCode(body: URLSearchParams) {
     );
   }
 
-  // Look up the auth code
+  // Atomically claim the auth code (prevents TOCTOU race condition)
   const [authCodeRow] = await db
-    .select()
-    .from(mcpAuthCode)
+    .update(mcpAuthCode)
+    .set({ usedAt: new Date() })
     .where(
       and(
         eq(mcpAuthCode.code, code),
         isNull(mcpAuthCode.usedAt),
         gt(mcpAuthCode.expiresAt, new Date()),
       ),
-    );
+    )
+    .returning();
 
   if (!authCodeRow || !authCodeRow.userId) {
     return NextResponse.json({ error: 'invalid_grant' }, { status: 400 });
@@ -90,12 +91,6 @@ async function handleAuthorizationCode(body: URLSearchParams) {
   if (computedChallenge !== authCodeRow.codeChallenge) {
     return NextResponse.json({ error: 'invalid_grant' }, { status: 400 });
   }
-
-  // Mark code as used
-  await db
-    .update(mcpAuthCode)
-    .set({ usedAt: new Date() })
-    .where(eq(mcpAuthCode.id, authCodeRow.id));
 
   const audience = authCodeRow.resource || `${BASE_URL}/api/mcp`;
   const scope = authCodeRow.scope || 'drafts';
