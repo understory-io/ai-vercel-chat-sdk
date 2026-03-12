@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { notionExporter } from '@/lib/notion/export';
-import { auth } from '@/app/(auth)/auth';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 
 interface ExportRequest {
   title: string;
@@ -11,9 +11,8 @@ interface ExportRequest {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
+    const authResult = await getAuthenticatedUser();
+    if (!authResult) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 },
@@ -84,9 +83,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await auth();
-    if (!session?.user) {
+    const authResult = await getAuthenticatedUser();
+    if (!authResult) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 },

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { notionService, type NotionPage } from '@/lib/notion/client';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 
 interface CachedResult {
   pages: NotionPage[];
@@ -42,6 +43,11 @@ function filterCachedPages(pages: NotionPage[], query: string): NotionPage[] {
 }
 
 export async function GET(request: NextRequest) {
+  const authResult = await getAuthenticatedUser();
+  if (!authResult) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q') || searchParams.get('query') || '';
@@ -181,6 +187,11 @@ export async function GET(request: NextRequest) {
 
 // Test endpoint to verify connection
 export async function POST(request: NextRequest) {
+  const authResult = await getAuthenticatedUser();
+  if (!authResult) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const isConnected = await notionService.testConnection();
 
