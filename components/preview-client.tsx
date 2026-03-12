@@ -9,6 +9,9 @@ import { Editor } from '@/components/text-editor';
 import type { EditorView } from 'prosemirror-view';
 import { Loader2, ChevronRight, Folder } from 'lucide-react';
 import DOMPurify from 'dompurify';
+import { remark } from 'remark';
+import remarkHtml from 'remark-html';
+import remarkGfm from 'remark-gfm';
 
 interface DraftData {
   id: string;
@@ -88,54 +91,13 @@ export function PreviewClient({
   const isDraft = draft.status === 'draft';
   const isPublished = draft.status === 'published';
 
-  // Render markdown to HTML client-side for preview
+  // Render markdown to HTML using the same remark pipeline as Intercom publishing
   const renderMarkdown = useCallback(async (content: string) => {
-    const lines = content.split('\n');
-    let html = '';
-    let inList = false;
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-
-      if (trimmed.startsWith('### ')) {
-        if (inList) {
-          html += '</ul>';
-          inList = false;
-        }
-        html += `<h3>${trimmed.slice(4)}</h3>`;
-      } else if (trimmed.startsWith('## ')) {
-        if (inList) {
-          html += '</ul>';
-          inList = false;
-        }
-        html += `<h2>${trimmed.slice(3)}</h2>`;
-      } else if (trimmed.startsWith('# ')) {
-        if (inList) {
-          html += '</ul>';
-          inList = false;
-        }
-        html += `<h1>${trimmed.slice(2)}</h1>`;
-      } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-        if (!inList) {
-          html += '<ul>';
-          inList = true;
-        }
-        html += `<li>${formatInline(trimmed.slice(2))}</li>`;
-      } else if (trimmed === '') {
-        if (inList) {
-          html += '</ul>';
-          inList = false;
-        }
-      } else {
-        if (inList) {
-          html += '</ul>';
-          inList = false;
-        }
-        html += `<p>${formatInline(trimmed)}</p>`;
-      }
-    }
-    if (inList) html += '</ul>';
-    return html;
+    const result = await remark()
+      .use(remarkGfm)
+      .use(remarkHtml, { sanitize: true })
+      .process(content);
+    return result.toString();
   }, []);
 
   useEffect(() => {
@@ -791,15 +753,3 @@ export function PreviewClient({
   );
 }
 
-/** Simple inline markdown formatting */
-function formatInline(text: string): string {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/\[(.+?)\]\((.+?)\)/g, (_, linkText, href) => {
-      const url = href.trim();
-      if (/^(javascript|data|vbscript):/i.test(url)) return linkText;
-      return `<a href="${url}">${linkText}</a>`;
-    });
-}
