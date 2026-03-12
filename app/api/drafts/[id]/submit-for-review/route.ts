@@ -1,6 +1,9 @@
 import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { getArticleDraft, updateArticleDraft } from '@/lib/db/queries';
+import { createLogger } from '@/lib/logger';
 import { notifySlackForReview } from '@/lib/slack/notify-review';
+
+const log = createLogger('api');
 
 export async function POST(
   request: Request,
@@ -49,16 +52,20 @@ export async function POST(
     'https://product-documentation-generator.vercel.app';
 
   // Notify CS in Slack (don't fail the request if Slack is down)
-  try {
-    await notifySlackForReview({
-      title: draft.title,
-      submittedBy: authResult.userEmail ?? authResult.userId,
-      reviewUrl: `${baseUrl}/preview/${draft.id}`,
-      reviewerSlackId,
-    });
-  } catch (err) {
-    console.error('Failed to notify Slack for review:', err);
+  const slackResult = await notifySlackForReview({
+    title: draft.title,
+    submittedBy: authResult.userEmail ?? authResult.userId,
+    reviewUrl: `${baseUrl}/preview/${draft.id}`,
+    reviewerSlackId,
+  });
+
+  if (!slackResult.ok) {
+    log.warn({ draftId: draft.id }, `Slack notification skipped: ${slackResult.reason}`);
   }
 
-  return Response.json({ success: true, status: 'pending_review' });
+  return Response.json({
+    success: true,
+    status: 'pending_review',
+    slackNotified: slackResult.ok,
+  });
 }

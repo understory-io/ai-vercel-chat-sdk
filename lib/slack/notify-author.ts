@@ -1,3 +1,11 @@
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('slack');
+
+export type SlackAuthorNotifyResult =
+  | { ok: true }
+  | { ok: false; reason: string };
+
 /**
  * Send a Slack DM to the article author when changes are requested.
  * Looks up the author's Slack user ID by email, opens a DM channel, and posts a message.
@@ -14,11 +22,12 @@ export async function notifyAuthorChangesRequested({
   reviewUrl: string;
   note?: string;
   reviewerName?: string;
-}) {
+}): Promise<SlackAuthorNotifyResult> {
   const token = process.env.SLACK_BOT_TOKEN;
   if (!token) {
-    console.warn('SLACK_BOT_TOKEN not configured, skipping author notification');
-    return;
+    const reason = 'SLACK_BOT_TOKEN not configured';
+    log.warn(reason);
+    return { ok: false, reason };
   }
 
   // Look up Slack user by email (requires users:read.email scope)
@@ -29,10 +38,9 @@ export async function notifyAuthorChangesRequested({
   const lookupData = await lookupRes.json();
 
   if (!lookupData.ok) {
-    console.warn(
-      `Slack lookupByEmail failed for ${authorEmail}: ${lookupData.error}`,
-    );
-    return;
+    const reason = `Slack lookupByEmail failed for ${authorEmail}: ${lookupData.error}`;
+    log.warn({ authorEmail }, reason);
+    return { ok: false, reason };
   }
 
   const slackUserId = lookupData.user.id;
@@ -49,8 +57,9 @@ export async function notifyAuthorChangesRequested({
 
   const openData = await openRes.json();
   if (!openData.ok) {
-    console.error('Failed to open Slack DM:', openData.error);
-    return;
+    const reason = `Failed to open Slack DM: ${openData.error}`;
+    log.error({ slackUserId }, reason);
+    return { ok: false, reason };
   }
 
   const channelId = openData.channel.id;
@@ -87,6 +96,11 @@ export async function notifyAuthorChangesRequested({
 
   const msgData = await msgRes.json();
   if (!msgData.ok) {
-    console.error('Failed to send Slack DM:', msgData.error);
+    const reason = `Failed to send Slack DM: ${msgData.error}`;
+    log.error({ channelId }, reason);
+    return { ok: false, reason };
   }
+
+  log.info({ authorEmail, articleTitle }, 'Author notified of changes requested');
+  return { ok: true };
 }

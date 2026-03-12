@@ -1,8 +1,11 @@
 import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { db, getArticleDraft, updateArticleDraft } from '@/lib/db/queries';
 import { user as userTable } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { createLogger } from '@/lib/logger';
 import { notifyAuthorChangesRequested } from '@/lib/slack/notify-author';
+import { eq } from 'drizzle-orm';
+
+const log = createLogger('api');
 
 export async function POST(
   request: Request,
@@ -50,25 +53,34 @@ export async function POST(
     .from(userTable)
     .where(eq(userTable.id, draft.userId));
 
+  let slackNotified = false;
+
   if (author?.email) {
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
       'https://product-documentation-generator.vercel.app';
 
-    try {
-      await notifyAuthorChangesRequested({
-        authorEmail: author.email,
-        articleTitle: draft.title,
-        reviewUrl: `${baseUrl}/preview/${draft.id}`,
-        note,
-        reviewerName: authResult.userEmail ?? undefined,
-      });
-    } catch (err) {
-      console.error('Failed to notify author via Slack:', err);
+    const slackResult = await notifyAuthorChangesRequested({
+      authorEmail: author.email,
+      articleTitle: draft.title,
+      reviewUrl: `${baseUrl}/preview/${draft.id}`,
+      note,
+      reviewerName: authResult.userEmail ?? undefined,
+    });
+
+    slackNotified = slackResult.ok;
+    if (!slackResult.ok) {
+      log.warn(
+        { draftId: draft.id, authorEmail: author.email },
+        `Author notification skipped: ${slackResult.reason}`,
+      );
     }
   } else {
-    console.warn(`No email found for author userId=${draft.userId}`);
+    log.warn(
+      { userId: draft.userId, draftId: draft.id },
+      'No email found for author',
+    );
   }
 
-  return Response.json({ success: true, status: 'draft' });
+  return Response.json({ success: true, status: 'draft', slackNotified });
 }
