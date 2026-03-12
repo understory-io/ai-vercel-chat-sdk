@@ -6,7 +6,7 @@ export async function markdownToHtml(markdown: string): Promise<string> {
   try {
     const result = await remark()
       .use(remarkGfm) // Support GitHub Flavored Markdown
-      .use(remarkHtml, { sanitize: false }) // Don't sanitize HTML since Intercom will handle it
+      .use(remarkHtml, { sanitize: true })
       .process(markdown);
 
     return result.toString();

@@ -8,6 +8,7 @@ import { EditorToolbar } from '@/components/editor-toolbar';
 import { Editor } from '@/components/text-editor';
 import type { EditorView } from 'prosemirror-view';
 import { Loader2, ChevronRight, Folder } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 interface DraftData {
   id: string;
@@ -782,7 +783,7 @@ export function PreviewClient({
               prose-a:text-blue-600 dark:prose-a:text-blue-400
               prose-code:text-sm prose-code:bg-gray-100 dark:prose-code:bg-zinc-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
               prose-pre:bg-gray-50 dark:prose-pre:bg-zinc-900"
-            dangerouslySetInnerHTML={{ __html: renderedHtml }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderedHtml) }}
           />
         </article>
       )}
@@ -796,5 +797,9 @@ function formatInline(text: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
     .replace(/`(.+?)`/g, '<code>$1</code>')
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
+    .replace(/\[(.+?)\]\((.+?)\)/g, (_, linkText, href) => {
+      const url = href.trim();
+      if (/^(javascript|data|vbscript):/i.test(url)) return linkText;
+      return `<a href="${url}">${linkText}</a>`;
+    });
 }
