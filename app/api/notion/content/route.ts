@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { notionService } from '@/lib/notion/client';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 
 interface ContentRequest {
   pageIds: string[];
@@ -19,6 +20,11 @@ interface ContentResponse {
 }
 
 export async function POST(request: NextRequest) {
+  const authResult = await getAuthenticatedUser();
+  if (!authResult) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const body: ContentRequest = await request.json();
     const { pageIds } = body;
