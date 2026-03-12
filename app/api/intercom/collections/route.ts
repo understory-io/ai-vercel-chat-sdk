@@ -1,6 +1,12 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 
 export async function GET(request: NextRequest) {
+  const authResult = await getAuthenticatedUser();
+  if (!authResult) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const accessToken = process.env.INTERCOM_ACCESS_TOKEN;
 
   if (!accessToken) {

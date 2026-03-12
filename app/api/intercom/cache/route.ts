@@ -1,7 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { deleteCached } from '@/lib/redis';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 
 export async function DELETE(request: NextRequest) {
+  const authResult = await getAuthenticatedUser();
+  if (!authResult) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const action = request.nextUrl.searchParams.get('action');
 
@@ -41,6 +47,11 @@ export async function DELETE(request: NextRequest) {
 }
 
 export async function GET() {
+  const authResult = await getAuthenticatedUser();
+  if (!authResult) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   return NextResponse.json({
     message: 'Intercom Cache Management',
     endpoints: {

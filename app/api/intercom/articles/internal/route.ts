@@ -1,7 +1,13 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { markdownToHtml } from '@/lib/intercom/markdown-to-html';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 
 export async function POST(request: NextRequest) {
+  const authResult = await getAuthenticatedUser();
+  if (!authResult) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const accessToken = process.env.INTERCOM_ACCESS_TOKEN;
   const workspaceId = process.env.INTERCOM_WORKSPACE_ID;
 
