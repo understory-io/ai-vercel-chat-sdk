@@ -51,6 +51,21 @@ export async function GET(request: Request) {
     );
   }
 
+  // Validate redirect_uri against registered URIs for this client
+  if (
+    !client.redirectUris ||
+    client.redirectUris.length === 0 ||
+    !client.redirectUris.includes(redirectUri)
+  ) {
+    return NextResponse.json(
+      {
+        error: 'invalid_request',
+        error_description: 'redirect_uri does not match any registered URI for this client',
+      },
+      { status: 400 },
+    );
+  }
+
   // Create a pending auth code row (no user yet — populated after Google callback)
   const pendingId = crypto.randomUUID();
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
