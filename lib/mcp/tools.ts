@@ -250,7 +250,7 @@ export function registerTools(server: McpServer, userId: string) {
         .where(eq(userTable.id, userId));
 
       // Notify CS in Slack
-      await notifySlackForReview({
+      const slackResult = await notifySlackForReview({
         title: draft.title,
         submittedBy: dbUser?.email ?? userId,
         reviewUrl,
@@ -265,6 +265,8 @@ export function registerTools(server: McpServer, userId: string) {
               success: true,
               status: 'pending_review',
               reviewUrl,
+              slackNotified: slackResult.ok,
+              ...(slackResult.ok ? {} : { slackWarning: slackResult.reason }),
             }),
           },
         ],
