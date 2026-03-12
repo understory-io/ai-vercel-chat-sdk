@@ -1,5 +1,5 @@
 import { getArticleDraft } from '@/lib/db/queries';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { PreviewClient } from '@/components/preview-client';
 import { auth } from '@/app/(auth)/auth';
 import { db } from '@/lib/db/queries';
@@ -14,7 +14,19 @@ export default async function PreviewPage({
   const { id } = await params;
   const [draft, session] = await Promise.all([getArticleDraft({ id }), auth()]);
 
+  if (!session?.user?.id) {
+    redirect('/login');
+  }
+
   if (!draft) {
+    notFound();
+  }
+
+  // Draft and discarded articles are only visible to the author
+  if (
+    (draft.status === 'draft' || draft.status === 'discarded') &&
+    draft.userId !== session.user.id
+  ) {
     notFound();
   }
 
