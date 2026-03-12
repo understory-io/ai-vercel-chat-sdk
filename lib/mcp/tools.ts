@@ -158,7 +158,7 @@ export function registerTools(server: McpServer, userId: string) {
           isError: true,
         };
       }
-      if (draft.status === 'discarded' || draft.status === 'pending_review') {
+      if (draft.status !== 'draft') {
         return {
           content: [
             {
