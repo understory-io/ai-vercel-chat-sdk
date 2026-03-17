@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db/queries';
-import { mcpAuthCode, user } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
+import { account, mcpAuthCode, user } from '@/lib/db/schema';
+import { and, eq } from 'drizzle-orm';
 import { cookies } from 'next/headers';
 
 const BASE_URL =
@@ -118,6 +118,35 @@ export async function GET(request: Request) {
       })
       .returning();
     userId = newUser.id;
+  }
+
+  // Ensure a Google Account row exists so NextAuth can link this user
+  // when they later sign in via the web app (prevents OAuthAccountNotLinked)
+  const [existingAccount] = await db
+    .select()
+    .from(account)
+    .where(
+      and(
+        eq(account.provider, 'google'),
+        eq(account.providerAccountId, userInfo.id),
+      ),
+    );
+
+  if (!existingAccount) {
+    await db.insert(account).values({
+      userId,
+      type: 'oidc',
+      provider: 'google',
+      providerAccountId: userInfo.id,
+      access_token: tokenData.access_token,
+      refresh_token: tokenData.refresh_token ?? null,
+      expires_at: tokenData.expires_in
+        ? Math.floor(Date.now() / 1000) + tokenData.expires_in
+        : null,
+      token_type: tokenData.token_type ?? null,
+      scope: tokenData.scope ?? null,
+      id_token: tokenData.id_token ?? null,
+    });
   }
 
   // Generate the actual authorization code
