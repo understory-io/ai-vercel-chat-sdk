@@ -23,7 +23,7 @@
     "@ai-sdk/anthropic": "^2.0.4",
     "@ai-sdk/openai": "^2.0.14",
     "@ai-sdk/provider": "2.0.0-beta.1",
-    "@ai-sdk/react": "2.0.0-beta.6",
+    "@ai-sdk/react": "2.0.163",
     "@ai-sdk/xai": "2.0.62",
     "@auth/drizzle-adapter": "^1.11.1",
     "@codemirror/lang-javascript": "^6.2.2",
