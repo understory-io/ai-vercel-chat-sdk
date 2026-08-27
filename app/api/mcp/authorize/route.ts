@@ -8,6 +8,38 @@ const BASE_URL =
   process.env.NEXT_PUBLIC_APP_URL ||
   'https://product-documentation-generator.vercel.app';
 
+function isLoopbackHost(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
+/**
+ * Compares a requested redirect_uri against a registered one.
+ * For loopback URIs the port is ignored (RFC 8252 Section 7.3): CLI clients
+ * bind an ephemeral port for the callback, which can differ from the port
+ * they registered with. All other URIs must match exactly.
+ */
+function redirectUriMatches(registered: string, requested: string): boolean {
+  if (registered === requested) {
+    return true;
+  }
+
+  let registeredUrl: URL;
+  let requestedUrl: URL;
+  try {
+    registeredUrl = new URL(registered);
+    requestedUrl = new URL(requested);
+  } catch {
+    return false;
+  }
+
+  return (
+    isLoopbackHost(registeredUrl.hostname) &&
+    isLoopbackHost(requestedUrl.hostname) &&
+    registeredUrl.protocol === requestedUrl.protocol &&
+    registeredUrl.pathname === requestedUrl.pathname
+  );
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const clientId = url.searchParams.get('client_id');
@@ -55,12 +87,15 @@ export async function GET(request: Request) {
   if (
     !client.redirectUris ||
     client.redirectUris.length === 0 ||
-    !client.redirectUris.includes(redirectUri)
+    !client.redirectUris.some((registered) =>
+      redirectUriMatches(registered, redirectUri),
+    )
   ) {
     return NextResponse.json(
       {
         error: 'invalid_request',
-        error_description: 'redirect_uri does not match any registered URI for this client',
+        error_description:
+          'redirect_uri does not match any registered URI for this client',
       },
       { status: 400 },
     );
